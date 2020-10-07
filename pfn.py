@@ -26,16 +26,16 @@ import logging
 vollog = logging.getLogger(__name__)
 
 try:
-	import csv
-	has_csv = True
+    import csv
+    has_csv = True
 except ImportError:
-	has_csv = False
+    has_csv = False
 
 try:
-	from ttkthemes import ThemedStyle
-	has_themes = True
+    from ttkthemes import ThemedStyle
+    has_themes = True
 except ImportError:
-	has_themes = False
+    has_themes = False
 
 app = None
 TreeTable_CULUMNS = {} # an TreeTable global to store all the user preference for the header selected.
@@ -46,13 +46,13 @@ file_slice = 8 if sys.platform == 'win32' else 5
 right_click_event = '<Button-2>' if sys.platform == 'darwin' else '<Button-3>'
 
 PAGES_LIST = {0: 'Zeroed',
-				1: 'Free',
-				2: 'Standby',
-				3: 'Modified',
-				4: 'ModifiedNoWrite',
-				5: 'Bad',
-				6: 'Active',
-				7: 'Transition'}
+                1: 'Free',
+                2: 'Standby',
+                3: 'Modified',
+                4: 'ModifiedNoWrite',
+                5: 'Bad',
+                6: 'Active',
+                7: 'Transition'}
 
 POOL_TAGS = {
   "AzWp": " HDAudio.sys  - HD Audio Class Driver (AzWaveport, HdaWaveRTminiport)\r\n",
@@ -4521,3260 +4521,3250 @@ x3PgODfvxgZG7wn/0qnyhPA7RK3LVutsYJyMZ4J+DkuyMpgTPhtDzqCUH40Dfbyc+PV1VywP9A7z
 ASCII = r" 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#\$%&\'\(\)\*\+,-\./:;<=>\?@\[\]\^_`\{\|\}\\\~\t"
 
 def get_right_member(struct, list_members):
-	'''
-	Return the right struct member from the list of members (to support a diffrent version).
-	'''
-	for item in list_members:
-		items = item.split('.')
-		c_struct = struct
-		for sub_item in items:
-			if not hasattr(c_struct, sub_item):
-				break
-			c_struct = getattr(c_struct, sub_item)
-		else:
-			return c_struct
+    '''
+    Return the right struct member from the list of members (to support a diffrent version).
+    '''
+    for item in list_members:
+        items = item.split('.')
+        c_struct = struct
+        for sub_item in items:
+            if not hasattr(c_struct, sub_item):
+                break
+            c_struct = getattr(c_struct, sub_item)
+        else:
+            return c_struct
 
 def strings_ascii(buf, n=5):
-	"""
-	This function extract all the ascii string from a buf where its bigger than n
-	yield offset, ascii
-	"""
-	reg = "([%s]{%d,})" % (ASCII, n)
-	compiled = re.compile(reg)
-	for match in compiled.finditer(buf.decode(errors='ignore')):
-		yield hex(match.start()), match.group()#.encode("ascii")
+    """
+    This function extract all the ascii string from a buf where its bigger than n
+    yield offset, ascii
+    """
+    reg = "([%s]{%d,})" % (ASCII, n)
+    compiled = re.compile(reg)
+    for match in compiled.finditer(buf.decode(errors='ignore')):
+        yield hex(match.start()), match.group()#.encode("ascii")
 
 def strings_unicode(buf, n=5):
-	"""
-	This function extract all the unicode string from a buf where its bigger than n
-	yield offset, unicode
-	"""
-	reg = bytes(("((?:[%s]\x00){%d,})" % (ASCII, n)).encode()) # place null between them
-	compiled = re.compile(reg)
-	for match in compiled.finditer(buf):
-		try:
-			yield hex(match.start()), match.group().decode("utf-16")
-		except ZeroDivisionError:
-			pass
+    """
+    This function extract all the unicode string from a buf where its bigger than n
+    yield offset, unicode
+    """
+    reg = bytes(("((?:[%s]\x00){%d,})" % (ASCII, n)).encode()) # place null between them
+    compiled = re.compile(reg)
+    for match in compiled.finditer(buf):
+        try:
+            yield hex(match.start()), match.group().decode("utf-16")
+        except ZeroDivisionError:
+            pass
 
 def get_ascii_unicode(buf, as_string=False ,remove_hex=False, n=5):
-	"""
-	This function return a tuple of (list(strings_ascii), list(strings_unicode))
-	"""
-	if as_string:
-		return ['{}: {}'.format(c_offset, c_string) for c_offset, c_string in list(strings_ascii(buf, n))], ['{}: {}'.format(c_offset, c_string) for c_offset, c_string in list(strings_unicode(buf, n))]
-	if remove_hex:
-		return [c_string for c_offset, c_string in list(strings_ascii(buf, n))], [c_string for c_offset, c_string in list(strings_unicode(buf, n))]
-	return list(strings_ascii(buf, n)), list(strings_unicode(buf, n))
+    """
+    This function return a tuple of (list(strings_ascii), list(strings_unicode))
+    """
+    if as_string:
+        return ['{}: {}'.format(c_offset, c_string) for c_offset, c_string in list(strings_ascii(buf, n))], ['{}: {}'.format(c_offset, c_string) for c_offset, c_string in list(strings_unicode(buf, n))]
+    if remove_hex:
+        return [c_string for c_offset, c_string in list(strings_ascii(buf, n))], [c_string for c_offset, c_string in list(strings_unicode(buf, n))]
+    return list(strings_ascii(buf, n)), list(strings_unicode(buf, n))
 
 
 class NoteBook(tkinter.ttk.Notebook):
-	'''
-	NoteBook with the menu that let as to remove tabs.
-	'''
-	def __init__(self, master, *args, **kwargs):
-		tkinter.ttk.Notebook.__init__(self, master, *args, **kwargs)
-		self.enable_traversal()
+    '''
+    NoteBook with the menu that let as to remove tabs.
+    '''
+    def __init__(self, master, *args, **kwargs):
+        tkinter.ttk.Notebook.__init__(self, master, *args, **kwargs)
+        self.enable_traversal()
 
 class MemoryInformation(tk.Tk):
 
-	def __init__(self, PageListSummary, PageSummary, FileSummary, get_pfn_info, menu_show='PhysicalRanges', *args, **kwargs):
-		tk.Tk.__init__(self, *args, **kwargs)
-		self.PageListSummary, self.PageSummary, self.FileSummary, self.get_pfn_info = PageListSummary, PageSummary, FileSummary, get_pfn_info
-		self.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
-		self.relate = self
-		tabcontroller = NoteBook(self)
-		self.frames = {}
+    def __init__(self, PageListSummary, PageSummary, FileSummary, get_pfn_info, menu_show='PhysicalRanges', *args, **kwargs):
+        tk.Tk.__init__(self, *args, **kwargs)
+        self.PageListSummary, self.PageSummary, self.FileSummary, self.get_pfn_info = PageListSummary, PageSummary, FileSummary, get_pfn_info
+        self.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
+        self.relate = self
+        tabcontroller = NoteBook(self)
+        self.frames = {}
 
-		for F in (MemoryInfo, FileExplorer, PhysicalRanges, PageColor):
-			# __init__ all the classes (the notebook tabs).
-			page_name = F.__name__
-			frame = F(parent=tabcontroller, controller=self)
-			self.frames[page_name] = frame
-			frame.config()
-			frame.grid(row=0, column=0, sticky=E + W + N + S)
-			tabcontroller.add(frame, text=page_name)
+        for F in (MemoryInfo, FileExplorer, PhysicalRanges, PageColor):
+            # __init__ all the classes (the notebook tabs).
+            page_name = F.__name__
+            frame = F(parent=tabcontroller, controller=self)
+            self.frames[page_name] = frame
+            frame.config()
+            frame.grid(row=0, column=0, sticky=E + W + N + S)
+            tabcontroller.add(frame, text=page_name)
 
 
-		tabcontroller.enable_traversal()
-		tabcontroller.pack(fill=BOTH, expand=1)
-		if menu_show in self.frames:
-			tabcontroller.select(self.frames[menu_show])
-		self.tabcontroller = tabcontroller
+        tabcontroller.enable_traversal()
+        tabcontroller.pack(fill=BOTH, expand=1)
+        if menu_show in self.frames:
+            tabcontroller.select(self.frames[menu_show])
+        self.tabcontroller = tabcontroller
 
 class MemoryInfo(tk.Frame):
 
-	def __init__(self, parent, controller):
-		tk.Frame.__init__(self, parent)
-		self.controller = controller
-		label = tk.Label(self, text="Page List Summary", font=controller.title_font)
-		label.pack(side="top", fill="x", pady=10)
-		lb_info = tk.Label(self, text="Paging Lists(K)\nZeroed: {}\nFree: {}\nModified: {}\nModifiedNoWrite: {}\nStandby: {}\nPageFileModified: {}".format(self.controller.PageListSummary['MmZeroedPageListHead'] or "", self.controller.PageListSummary['MmFreePageListHead'] or "", self.controller.PageListSummary['MmModifiedPageListHead'] or "", self.controller.PageListSummary['MmModifiedNoWritePageListHead'] or "", self.controller.PageListSummary['MmStandbyPageListHead'] or "", '' or ""))
-		lb_info.pack()
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.controller = controller
+        label = tk.Label(self, text="Page List Summary", font=controller.title_font)
+        label.pack(side="top", fill="x", pady=10)
+        lb_info = tk.Label(self, text="Paging Lists(K)\nZeroed: {}\nFree: {}\nModified: {}\nModifiedNoWrite: {}\nStandby: {}\nPageFileModified: {}".format(self.controller.PageListSummary['MmZeroedPageListHead'] or "", self.controller.PageListSummary['MmFreePageListHead'] or "", self.controller.PageListSummary['MmModifiedPageListHead'] or "", self.controller.PageListSummary['MmModifiedNoWritePageListHead'] or "", self.controller.PageListSummary['MmStandbyPageListHead'] or "", '' or ""))
+        lb_info.pack()
 
 class PageColor(tk.Frame):
-	def __init__(self, parent, controller):
-		tk.Frame.__init__(self, parent)
-		self.controller = controller
-		label = tk.Label(self, text="Page Color", font=controller.title_font)
-		label.pack(side="top", fill="x", pady=10)
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.controller = controller
+        label = tk.Label(self, text="Page Color", font=controller.title_font)
+        label.pack(side="top", fill="x", pady=10)
 
-		my_strings = [
-			("NxBit off but marked in vad as not executable (System Excluded): ", "red"),
-			("Non-file executable pages: ", "orange"),
-			("NxBit off but not in vad regions (System Excluded)", "yellow"),
-			("NxBit on but marked in vad as executable ", "purple")
-		]
+        my_strings = [
+            ("NxBit off but marked in vad as not executable (System Excluded): ", "red"),
+            ("Non-file executable pages: ", "orange"),
+            ("NxBit off but not in vad regions (System Excluded)", "yellow"),
+            ("NxBit on but marked in vad as executable ", "purple")
+        ]
 
-		self.string_to_tag = {
-			my_strings[0][0]:'vad_conflict',
-			my_strings[1][0]:'no_file_execute',
-			my_strings[2][0]:'execute_no_vad',
-			my_strings[3][0]:'ntbit_conflict'
-		}
+        self.string_to_tag = {
+            my_strings[0][0]:'vad_conflict',
+            my_strings[1][0]:'no_file_execute',
+            my_strings[2][0]:'execute_no_vad',
+            my_strings[3][0]:'ntbit_conflict'
+        }
 
-		txt_width = 0
-		for c_string in my_strings:
-			c_width = tkinter.font.Font().measure(c_string) // 7
-			if c_width > txt_width:
-				txt_width = c_width
-		txt_width = txt_width if txt_width < 250 else 250
-		self.buttons = {}
-		tlf = tkinter.ttk.Frame(self)
-		trf = tkinter.ttk.Frame(self)
-		# Create all the labels inside the my_strings list of tuples
-		for my_string in my_strings:
-			label_txt = my_string[0]
-			c_color = my_string[1]
+        txt_width = 0
+        for c_string in my_strings:
+            c_width = tkinter.font.Font().measure(c_string) // 7
+            if c_width > txt_width:
+                txt_width = c_width
+        txt_width = txt_width if txt_width < 250 else 250
+        self.buttons = {}
+        tlf = tkinter.ttk.Frame(self)
+        trf = tkinter.ttk.Frame(self)
+        # Create all the labels inside the my_strings list of tuples
+        for my_string in my_strings:
+            label_txt = my_string[0]
+            c_color = my_string[1]
 
-			my_label = tkinter.ttk.Label(tlf, text=label_txt, wraplength=500)#, width=path_button['width'])
-			my_label.pack(anchor='w')
-			print(label_txt)
-			self.buttons[label_txt] = tkinter.Button(trf, width=(txt_width if txt_width < 250 else 250), text='.', bg=c_color, command=functools.partial(self.ChangeColor, label_txt))
-			ToolTip(self.buttons[label_txt], "Click To Change Color")
-			self.buttons[label_txt].pack(anchor='w')
+            my_label = tkinter.ttk.Label(tlf, text=label_txt, wraplength=500)#, width=path_button['width'])
+            my_label.pack(anchor='w')
+            print(label_txt)
+            self.buttons[label_txt] = tkinter.Button(trf, width=(txt_width if txt_width < 250 else 250), text='.', bg=c_color, command=functools.partial(self.ChangeColor, label_txt))
+            ToolTip(self.buttons[label_txt], "Click To Change Color")
+            self.buttons[label_txt].pack(anchor='w')
 
-		tlf.pack(side=LEFT, ipadx=5, padx=5)
-		trf.pack(side=LEFT)
+        tlf.pack(side=LEFT, ipadx=5, padx=5)
+        trf.pack(side=LEFT)
 
-	def ChangeColor(self, tag):
-		color = tkinter.colorchooser.askcolor()[1]
-		self.controller.frames['PhysicalRanges'].tree.tree.tag_configure(self.string_to_tag[tag], background=color)
-		self.buttons[tag].configure(bg = color)
-		print('Color Changed')
+    def ChangeColor(self, tag):
+        color = tkinter.colorchooser.askcolor()[1]
+        self.controller.frames['PhysicalRanges'].tree.tree.tag_configure(self.string_to_tag[tag], background=color)
+        self.buttons[tag].configure(bg = color)
+        print('Color Changed')
 
 class PhysicalRanges(tk.Frame):
 
-	def __init__(self, parent, controller, data=None):
-		global app
-		print('PhysicalRanges Start')
-		tk.Frame.__init__(self, parent)
-		self.controller = controller
-		label = tk.Label(self, text="Page Summary", font=controller.title_font)
-		label.pack(side="top", fill="x", pady=10)
-		headers = ("Physical Address", "List", "Use", "Priority", "Image", "Offset", "File Name", "Process", "Virtual Address", "NX Bit", "VA in vad")
+    def __init__(self, parent, controller, data=None):
+        global app
+        print('PhysicalRanges Start')
+        tk.Frame.__init__(self, parent)
+        self.controller = controller
+        label = tk.Label(self, text="Page Summary", font=controller.title_font)
+        label.pack(side="top", fill="x", pady=10)
+        headers = ("Physical Address", "List", "Use", "Priority", "Image", "Offset", "File Name", "Process", "Virtual Address", "NX Bit", "VA in vad")
 
-		self.data = data if data != None else self.controller.PageSummary
+        self.data = data if data != None else self.controller.PageSummary
 
-		#print(self.data)
-		self.tree = TreeTable(self, headers=headers, data=[], resize=False,disable_header_replace='True',text_popup=False, resizeable=False)
-		#self.data = data
+        #print(self.data)
+        self.tree = TreeTable(self, headers=headers, data=[], resize=False,disable_header_replace='True',text_popup=False, resizeable=False)
+        #self.data = data
 
-		self.tree.tree['height'] = 22 if 22 < len(self.data) else len(self.data)
-		self.tree.pack(expand=YES, fill=BOTH)
-		self.tree.tree.bind("<Double-1>", self.OnDoubleClick)
-		print('PhysicalRanges Done')
-		#self.aMenu = Menu(self, tearoff=0)
-		self.tree.aMenu.add_command(label='HexView', command=self.HexDump)
-		self.tree.aMenu.add_command(label='Full Page Info', command=self.PageInfo)
-		#self.aMenu.add_command(label='Dump', command=self.Dump)
-		#self.tree.tree.bind('<Button-3>', self.popup)
-		self.insert_items()
-		#app.after(1000, self.insert_items())
+        self.tree.tree['height'] = 22 if 22 < len(self.data) else len(self.data)
+        self.tree.pack(expand=YES, fill=BOTH)
+        self.tree.tree.bind("<Double-1>", self.OnDoubleClick)
+        print('PhysicalRanges Done')
+        #self.aMenu = Menu(self, tearoff=0)
+        self.tree.aMenu.add_command(label='HexView', command=self.HexDump)
+        self.tree.aMenu.add_command(label='Full Page Info', command=self.PageInfo)
+        #self.aMenu.add_command(label='Dump', command=self.Dump)
+        #self.tree.tree.bind('<Button-3>', self.popup)
+        self.insert_items()
+        #app.after(1000, self.insert_items())
 
-	def popup(self, event):
-		self.aMenu.post(event.x_root, event.y_root)
+    def popup(self, event):
+        self.aMenu.post(event.x_root, event.y_root)
 
-	def PageInfo(self):
-		item = self.tree.tree.selection()[0]
-		print(self.tree.tree.item(item,"text"))
-		clicked_addr = int(self.tree.tree.item(item,"text"), 16)
-		print(self.tree.tree.item(item)['values'])
-		va = self.tree.tree.item(item)['values'][-3]
-		app = PI(clicked_addr, va[0] if type(va) is list else va, get_right_member(self.controller, ['get_pfn_info', 'controller.get_pfn_info']))
-		app.title('{} ({})'.format('Page Full Info', hex(clicked_addr)))
-		#app.main_loop()
+    def PageInfo(self):
+        item = self.tree.tree.selection()[0]
+        print(self.tree.tree.item(item,"text"))
+        clicked_addr = int(self.tree.tree.item(item,"text"), 16)
+        print(self.tree.tree.item(item)['values'])
+        va = self.tree.tree.item(item)['values'][-3]
+        app = PI(clicked_addr, va[0] if type(va) is list else va, get_right_member(self.controller, ['get_pfn_info', 'controller.get_pfn_info']))
+        app.title('{} ({})'.format('Page Full Info', hex(clicked_addr)))
+        #app.main_loop()
 
 
-	def HexDump(self):
-		item = self.tree.tree.selection()[0]
-		clicked_file = self.tree.tree.item(item,"text")
-		file_handle = open(file_path, 'rb')
-		file_handle.seek(int(str(clicked_file).replace('L',''), 16)) # 16 because this is in hex
-		file_mem = file_handle.read(0x1000) # Read Page Size.
-		file_handle.close()
-		app = HexDump(file_name=clicked_file, file_data=file_mem, row_len=16)
-		app.title('{} ({})'.format('Memory', clicked_file))
-		window_width = 850
-		window_height = 650
-		width = app.winfo_screenwidth()
-		height = app.winfo_screenheight()
-		app.geometry('%dx%d+%d+%d' % (window_width, window_height, width*0.5-(window_width/2), height*0.5-(window_height/2)))
+    def HexDump(self):
+        item = self.tree.tree.selection()[0]
+        clicked_file = self.tree.tree.item(item,"text")
+        file_handle = open(file_path, 'rb')
+        file_handle.seek(int(str(clicked_file).replace('L',''), 16)) # 16 because this is in hex
+        file_mem = file_handle.read(0x1000) # Read Page Size.
+        file_handle.close()
+        app = HexDump(file_name=clicked_file, file_data=file_mem, row_len=16)
+        app.title('{} ({})'.format('Memory', clicked_file))
+        window_width = 850
+        window_height = 650
+        width = app.winfo_screenwidth()
+        height = app.winfo_screenheight()
+        app.geometry('%dx%d+%d+%d' % (window_width, window_height, width*0.5-(window_width/2), height*0.5-(window_height/2)))
 
-	def OnDoubleClick(self, event):
-		item = self.tree.tree.selection()[0]
-		clicked_file = self.tree.tree.item(item,"text")
-		for i in self.controller.PageSummary:
-			break
+    def OnDoubleClick(self, event):
+        item = self.tree.tree.selection()[0]
+        clicked_file = self.tree.tree.item(item,"text")
+        for i in self.controller.PageSummary:
+            break
 
-	def insert_items(self):
-		"""
-		This Function insert item to the TreeTable with list first item(if there is list)
-		"""
-		for item in self.data:
-			new_item = []
-			for i in item:
-				if isinstance(item, list):
-					if len(item) > 0:
-						new_item.append(i[0])
-					else:
-						new_item.append('')
-				else:
-					new_item.append(i)
-			self.tree.tree.insert('', END, values=new_item, text=item[self.tree.text_by_item], tags=item[self.tree.text_by_item])
+    def insert_items(self):
+        """
+        This Function insert item to the TreeTable with list first item(if there is list)
+        """
+        for item in self.data:
+            new_item = []
+            for i in item:
+                if isinstance(item, list):
+                    if len(item) > 0:
+                        new_item.append(i[0])
+                    else:
+                        new_item.append('')
+                else:
+                    new_item.append(i)
+            self.tree.tree.insert('', END, values=new_item, text=item[self.tree.text_by_item], tags=item[self.tree.text_by_item])
 
 class Explorer(Frame):
-	'''
-	Gui class to display explorer like (from dictionary inside dictionary inside dictionary...)
-	Each key will be the first item in the table, padding with the tuple that inside the '|properties|' item
-	if there is no '|properties|' key in some key the information will be 0 padding
-	Thats also mean that you cannot create in your table on the first column a item named "|properties|"
-	'''
-	def __init__(self, master, my_dict, headers, searchTitle, resize=True, path=None, relate=None, *args, **kwargs):
-		Frame.__init__(self, master, *args, **kwargs)
-
-		# Configure gird
-		self.grid_rowconfigure(0, weight=1)
-		self.grid_columnconfigure(0, weight=1)
-
-		# Init var
-		self.relate = relate
-		self.headers = headers
-		self.searchTitle = searchTitle
-		self.dict = my_dict
-
-		# Create the top frame (for the buttons and the entry).
-		top_frame = tkinter.ttk.Frame(self)
-
-		# Config search button
-		self.button_go_back = tkinter.ttk.Button(top_frame, text="<-", command=self.GoBack, width=5)
-		ToolTip(self.button_go_back, 'Forward (Alt + Left Arrow)')
-		self.button_go_back.pack(side=tk.LEFT)
-		self.button_ungo_back = tkinter.ttk.Button(top_frame, text="->", command=self.UnGo, width=5)
-		ToolTip(self.button_ungo_back, 'Forward (Alt + Right Arrow)')
-		self.button_ungo_back.pack(side=tk.LEFT)
-		search_exp_image = tk.PhotoImage(data=EXP_SEARCH_ICON)
-		search_exp_image_icon = search_exp_image.subsample(8, 8)
-		self.search_button = tk.Button(top_frame, image=search_exp_image_icon, command=self.control_f, height = 20, width = 20)
-		self.search_button.search_exp_image_icon = search_exp_image_icon
-		self.search_button.pack(side=tk.RIGHT)
-		ToolTip(self.search_button, 'Search')
-
-		# Config directory entry
-		self.entry_directory = tkinter.ttk.Entry(top_frame)
-		self.entry_directory.bind("<KeyRelease>", self.KeyRelease)
-		self.entry_directory.bind("<FocusOut>", lambda e: self.after(250, self.FoucusOut))
-		self.entry_directory.bind("<Return>", self.LVEnter)
-		self.entry_directory.pack(fill='x', ipady=1, pady=1)
-		self.c_selection = 0
-
-		top_frame.pack(side=tk.TOP, fill='x')
-
-		# Get all the data
-		data, directories = self.GetDataAndDirectories(self.dict)
-
-		# Init stuff like button, tree and bind events
-		self.current_directory = ""
-		self.last_data = self.last_tw = self.tw = None
-		self.directory_queue = []
-		self.directory_requeue = []
-		self.tree = TreeTable(self, headers=headers, data=data, resize=resize)
-		self.tree.tree['height'] = 22 if 22 < len(data) else len(data)
-		self.tree.pack(expand=YES, fill=BOTH)
-		self.tree.tree.bind("<Alt-Left>", self.GoBack)
-		self.tree.tree.bind("<BackSpace>", self.GoBack)
-		self.tree.tree.bind("<Alt-Right>", self.UnGo)
-		self.tree.tree.bind("<Double-1>", self.OnDoubleClick)
-		self.tree.tree.bind("<Return>", self.OnDoubleClick)
-		self.tree.tree.bind('<Control-f>', self.control_f)
-		self.tree.tree.bind('<Control-F>', self.control_f)
-		if has_csv:
-			self.tree.HeaderMenu.delete(5)
-			self.tree.HeaderMenu.insert_command(5, label='Export Explorer To Csv', command=self.export_table_csv)
-
-		# Tag the directories with "tag_directory" so all will be colored with yellow
-		def _from_rgb(rgb):
-			'''
-			Translates an rgb tuple of int to a tkinter friendly color code
-			'''
-			return "#%02x%02x%02x" % rgb
-		self.tree.tree.tag_configure('tag_directory', background=_from_rgb((252, 255, 124)))
-		self.tree.visual_drag.tag_configure('tag_directory', background=_from_rgb((252, 255, 124)))
-
-		# Tag all the directories (inside the directories list) with the "tag_directory".
-		for i in self.tree.tree.get_children():
-			dir_name = self.tree.tree.item(i,"text")
-
-			# Insert the directory to colored tag
-			if dir_name in directories:
-				self.tree.tree.item(i, tags="tag_directory")
-				self.tree.visual_drag.item(i, tags="tag_directory")
-
-		# Go to the path specify if specify
-		if path:
-			self.GoToFile(path, True)
-		else:
-
-			# If the first explorer have only one item go inside this item (recursively).
-			change_path = ''
-			while len(my_dict) == 1:
-				self.directory_queue.append(change_path)
-				change_path = '{}\\{}'.format(change_path, list(my_dict.keys())[0])
-				my_dict = my_dict[list(my_dict.keys())[0]]
-
-			# Go to the directory.
-			#self.GoTo(change_path)
-
-		# Bind exit if this is toplevel.
-		if not relate or self.winfo_toplevel() != relate:
-			def on_exit():
-				self.DetroyLV()
-				self.master.destroy()
-
-			# Exit the popup list.
-			self.winfo_toplevel().protocol("WM_DELETE_WINDOW", on_exit)
-
-	def control_f(self, event=None):
-		'''
-		This function spawn the search window.
-		:param event: None
-		:return: None
-		'''
-		app = ExpSearch(controller=self, dict=self.dict, dict_headers=self.headers)
-		x = self.relate.winfo_x() + 333
-		y = self.relate.winfo_y()
-		app.geometry("+%d+%d" % (x + ABS_X, y + ABS_Y))
-		app.title(self.searchTitle)
-		app.geometry("500x300")
-
-	def export_table_csv(self):
-		''' Export the table to csv file '''
-		ans = messagebox.askyesnocancel("Export to csv",
-										"Did you mean to export all the explorer data or just this specific table?\npress yes to all the data", parent=self)
-		if ans == None:
-			return
-
-		selected = tkinter.filedialog.asksaveasfilename(parent=self)
-		if selected and selected != '':
-
-			def export_specific_dict(csv_writer, dict, path):
-
-				# Go all over the dictionary.
-				for key in dict:
-
-					# Return if this is the information key.
-					if key == '|properties|':
-						continue
-
-					# If we want to export all the data or just the current
-					if ans:
-						csv_writer.writerow(['{} {}'.format('~' * path.count('\\'), key)] + (list(dict[key]['|properties|']) if '|properties|' in dict[key] else [0 for i in range(len(self.headers)-1)]))
-					elif path == self.current_directory:
-						csv_writer.writerow(['{} {}'.format('~' * path.count('\\'), key)] + (list(dict[key]['|properties|']) if '|properties|' in dict[key] else [0 for i in range(len(self.headers)-1)]))
-						continue
-					elif not path.lower() in self.current_directory.lower():
-						return
-
-					export_specific_dict(csv_writer, dict[key], '{}\{}'.format(path, key))
-
-
-			with open(selected, 'w') as fhandle:
-				csv_writer = csv.writer(fhandle)
-				csv_writer.writerow(self.headers)
-				export_specific_dict(csv_writer, self.dict, '')
-
-	def GetDBPointer(self, path, not_case_sensitive=False, return_none_on_bad_path=False):
-		'''
-		Return the specific dictionary (inside the db dict [self.dict]) that describe the given path
-		:param path: the path to describe
-		:param not_case_sensitive: False - > case sensitive
-		:return: db pointer dictionary somewhere inside the dictionary that describe the given path.
-		'''
-		db_pointer = self.dict
-		path_list = path.split("\\")
-
-		# Remove none item.
-		if path_list[0] == '':
-			path_list = path_list[1:]
-
-		# Return in empty path.
-		if return_none_on_bad_path and len(path_list) == 0:
-			return
-
-		current_path = ''
-		index = 0
-		for key in path_list:
-			if key in db_pointer:
-				db_pointer = db_pointer[key]
-
-			# Search with lower case
-			elif not_case_sensitive:
-				for c_key in db_pointer:
-					if c_key.lower() == key.lower():
-						db_pointer = db_pointer[c_key]
-						break
-				else:
-
-					if len(path_list) == index+1:
-						continue
-
-					if return_none_on_bad_path:
-						return
-
-					# Unable to find the full go_to path
-					ans = messagebox.askyesnocancel("Notice",
-													"Unnable to find this path ({}),\n\nThis path found: {}\nDo you want to go there?".format(
-														path, current_path), parent=self)
-					if not ans:
-						return
-					else:
-						# Set the curernt directory.
-						self.current_directory = current_path
-						self.entry_directory.delete(0, tk.END)
-						self.entry_directory.insert(0, self.current_directory)
-						return db_pointer
-
-			elif return_none_on_bad_path and len(path_list) -1  > index:
-				return
-			index += 1
-			current_path += '\{}'.format(key)
-
-		# Set the curernt directory.
-		self.current_directory = path
-		self.entry_directory.delete(0, tk.END)
-		self.entry_directory.insert(0, self.current_directory)
-		return db_pointer
-
-	def GetDataAndDirectories(self, db_pointer):
-		'''
-		Return the data, directory for a given pointer in the dictionary db
-		data - > the data sould be displayed for the db_pointer directory
-		directories - > is the directories that inside the data
-		:param db_pointer: pointer in the directory db (self.my_dict)
-		:return: (data, directories)
-		'''
-		data = []
-		directories = []
-		for key in list(db_pointer.keys()):
-
-			# Get all the data from the "|properties|" key in each dictionary key that have properties (informatio)
-			if key != "|properties|":
-
-				# Get the row items from the "|properties|" key.
-				# Pad with zero in case there is no "|properties|" key.
-				if "|properties|" in db_pointer[key]:
-					my_tup = db_pointer[key]["|properties|"]
-				else:
-					my_tup = tuple([0 for i in range(len(self.headers) - 1)])
-
-				# If this is directory insert it to the directories list witch will be colored in yellow.
-				if len(db_pointer[key]) - ("|properties|" in db_pointer[key]) > 0:
-					directories.append(key)
-
-				# Append the key name to the tuple.
-				my_tup = (key,) + my_tup if type(my_tup) == tuple else (key, str(my_tup))
-
-				# Insert the spesific row to the list of all the rows.
-				data.append(my_tup)
-		return data, directories
-
-	def KeyRelease(self, event=None):
-		'''
-		Display all the directories inside the current directory
-		:param event: None
-		:return: None
-		'''
-		data = self.entry_directory.get()
-
-		# If key down or up or left or right or enter return and let the other handle handle it.
-		if event and event.keysym_num in [65361, 65362, 65363, 65293]:
-			return
-		elif event and event.keysym_num in [65364, 65307] and self.tw and self.tw.winfo_exists(): # Key down
-
-			# If ESC pressed detroyd the window and return
-			if event.keysym_num == 65307:
-				self.DetroyLV()
-
-			return
-
-		# Return if non printable key pressed (nothing add to the entry_directory).
-		elif event and event.keysym_num != 65364:# and self.tw:
-			if data == self.last_data:
-				return
-
-		if self.tw:
-			self.DetroyLV()
-
-		# Add the \ if the entry is empty.
-		if data == '':
-			data = '\\'
-
-		self.last_data = data
-
-		db_pointer = self.GetDBPointer(data, True, return_none_on_bad_path=True)
-
-		# Alert the user that this path not exist (except if he try to delete).
-		if not db_pointer:
-			if not (event and event.keysym.lower() == 'backspace'):
-				self.bell()
-				messagebox.showerror('Error', 'Explorer Can\'t Find {},\nCheck the spelling and try again.'.format(data), parent=self)
-			return
-
-		values = []
-
-		# Get all the good directories based on the user type.
-		for dir in self.GetDataAndDirectories(db_pointer)[1]:
-			c_path = '{}\\{}'.format(data[:data.rfind('\\')], dir)
-
-			# Good data
-			if data.lower() in c_path.lower():
-				values.append(c_path)
-
-		# If there is more than one dir than post.
-		if len(values) > 0:
-
-			# Get position to post the toplevel.
-			x = self.entry_directory.winfo_rootx()
-			y = self.entry_directory.winfo_rooty() + 20
-
-			# Create the top level with frame.
-			self.last_tw = str(self.tw)
-			self.tw = tw = tk.Toplevel()
-			self.my_frame = tkinter.ttk.Frame(self.tw, width=self.entry_directory.winfo_reqwidth() - 1)
-			self.values = values
-			tw.wm_overrideredirect(1)
-			tw.wm_geometry("+%d+%d" % (x, y))
-
-			# Create and pack the listbox with scrollbar
-			self.lv = lv = tk.Listbox(self.my_frame, height = len(values) if len(values) < 10 else 10)
-			self.scrollbar = scrollbar = Scrollbar(self.my_frame, orient="vertical")
-			scrollbar.config(command=self.lv.yview)
-			scrollbar.pack(side=tk.RIGHT, fill="y")
-			self.lv.config(yscrollcommand=scrollbar.set)
-			lv['selectmode'] = tk.SINGLE
-
-			# Bind commands.
-			self.entry_directory.bind("<Return>", self.LVEnter)
-			self.entry_directory.bind('<Up>', self.Up)
-			self.entry_directory.bind('<Down>', self.Down)
-
-			# Insert data to the list (all the pathes).
-			for dis in values:
-				lv.insert(END, dis)
-
-			# Select the first item.
-			lv.selection_set(0)
-
-			# Bind Escape - > destroy and click -> open to the listbox.
-			lv.bind("<Escape>", self.DetroyLV)
-			#lv.bind('<Button-1>', self.LVEnter)
-			lv.bind('<ButtonRelease-1>', self.LVEnter)
-
-			# pack all the data.
-			lv.pack(fill=tk.BOTH)
-			self.my_frame.pack(fill=tk.BOTH)
-			self.update()
-
-			# Windows destroyed..
-			try:
-				h = self.lv.winfo_geometry().split('x')[1].split('+')[0]
-				tw.geometry("{}x{}".format(self.entry_directory.winfo_width() - 2, h))
-			except tk.TclError:
-				pass
-
-	def Down(self, event):
-		'''
-		KeyDown event - set selection to one down item
-		:param event: None
-		:return: None
-		'''
-
-		# Cleare the selected item
-		self.lv.selection_clear(self.c_selection)
-
-		# Add one if we less or equals to the number of elements in the list else 0
-		self.c_selection = self.c_selection + 1 if self.c_selection < len(self.values) - 1 else 0
-
-		# Go to view the item and select.
-		self.lv.yview(self.c_selection)
-		self.lv.selection_set(self.c_selection)
-
-	def Up(self, event):
-		'''
-		KeyUp event - set selection to one up item
-		:param event: None
-		:return: None
-		'''
-		# If we on the top destroyed.
-		if self.c_selection == 0:
-			self.DetroyLV()
-			return
-
-		# Set selection and position to the selected item.
-		self.lv.selection_clear(self.c_selection)
-		self.c_selection -= 1
-		self.lv.yview(self.c_selection)
-		self.lv.selection_set(self.c_selection)
-
-	def LVEnter(self, event=None):
-		'''
-		On enter/ click go to the selected item set the directory entry and detroyed the listbox.
-		:param event: None
-		:return: None
-		'''
-
-		# Check if we exit the window and this didnt destroyd
-		if not self.entry_directory.winfo_exists():
-			self.tw.destroy()
-			return
-
-		# If there is no goto and popup return.
-		if self.tw and len(self.lv.curselection()) != 0:
-			go_to = self.lv.get(self.lv.curselection())
-		else:
-			go_to = self.entry_directory.get()
-
-		# Go to the self.entry_directory.
-		self.GoTo(go_to, True)
-
-		# Update the entry directory (add \ to the end and generate keyrelease).
-		if not self.current_directory.endswith('\\'):
-			self.entry_directory.delete(0, tk.END)
-			self.entry_directory.insert(0, '{}\\'.format(self.current_directory))
-
-		self.KeyRelease(None) #self.entry_directory.event_generate('<KeyRelease>')
-
-		self.entry_directory.focus_set()
-
-	def FoucusOut(self, event=None):
-		'''
-		If we not focus some element of the toplevel exit.
-		:param event: None
-		:return: None
-		'''
-
-		# Check if we focus out the entry and the top level or some of his elements.
-		if self.tw and not self.focus_get() in [self.last_tw, self.tw, self.my_frame, self.lv, self.scrollbar] and not self.entry_directory.focus_get().__class__ == tkinter.ttk.Entry:
-			self.DetroyLV()
-
-	def DetroyLV(self, event=None):
-		'''
-		Destroyd the listbox and unbind all the current unnecessary binding methonds.
-		:param event:
-		:return:
-		'''
-
-		# Do this only if the top exist.
-		if self.tw and self.tw:
-			self.tw.destroy()
-			self.tw = None
-			#del self.tw
-			self.c_selection = 0
-			#self.entry_directory.bind('<Return>', lambda e: 'break')
-			self.entry_directory.bind("<Return>", self.LVEnter)
-			self.entry_directory.bind('<Up>', lambda e: 'break')
-			self.entry_directory.bind('<Down>', lambda e: 'break')
-
-	def OnDoubleClick(self, event):
-		'''
-		This function open directory (replace all the items in the tree to the subdirectory that was double clicked).
-		:param event: None
-		:return: None
-		'''
-
-		# Reset the user search
-		self.tree.row_search = ('', 0)
-
-		# Double click on table header to resize
-		if event and event.y < 25 and event.y > 0:
-			try:
-				if self.tree.tree.identify_region(event.x, event.y) == 'separator':
-					self.tree.resize_col(self.tree.tree.identify_column(event.x))
-				return
-			except tk.TclError:
-				return
-
-		# Double click where no item selected
-		elif len(self.tree.tree.selection()) == 0 :
-			return
-
-		# Get the selected item
-		item = self.tree.tree.selection()[0]
-		clicked_file = self.tree.tree.item(item, "text")
-		tags = self.tree.tree.item(item, "tags")
-		if not 'tag_directory' in tags:
-			return
-
-		# Append the current directory to the last visited directory list (self.directory_queue).
-		self.directory_queue.append(self.current_directory)
-
-		# Change the current directory
-		if self.current_directory.endswith('\\'):
-			self.current_directory += clicked_file
-		else:
-			self.current_directory += "\{}".format(clicked_file)
-
-		# Get the selected item from the database dictionary.
-		path = self.current_directory
-		db_pointer = self.GetDBPointer(path)
-
-		# Get all the data
-		data, directories = self.GetDataAndDirectories(db_pointer)
-
-		# Validate that this is directory (more that 0 files inside)
-		if len(data) > 0:
-
-			# Reset the undo list
-			self.directory_requeue = []
-
-			# Delete the previews data
-			for i in self.tree.tree.get_children():
-				self.tree.tree.delete(i)
-				self.tree.visual_drag.delete(i)
-
-			# Insert the new data.
-			self.tree.insert_items(data)
-
-			# Append the all the directories from the directories_list to the tag_directory (so they will colored as directory).
-			for i in self.tree.tree.get_children():
-				dir_name = self.tree.tree.item(i,"text")
-				if dir_name in directories:
-					self.tree.tree.item(i, tags="tag_directory")
-					self.tree.visual_drag.item(i, tags="tag_directory")
-
-	def UnGo(self, event=None):
-		'''
-		This function is undo fore goback.
-		:param event: None
-		:return: None
-		'''
-
-		# Reset the user search
-		self.tree.row_search = ('', 0)
-
-		# Check that the directory_queue is not empty (the list of the directories history).
-		if len(self.directory_requeue) > 0:
-
-			# Go to the last directory.
-			prev_dir = self.directory_requeue.pop()
-			self.GoTo(prev_dir, True)
-
-	def GoBack(self, event=None):
-		'''
-		This function go to the previews directory.
-		:param event: None
-		:return: None
-		'''
-
-		# Reset the user search
-		self.tree.row_search = ('', 0)
-
-		# Check that the directory_queue is not empty (the list of the directories history).
-		if len(self.directory_queue) > 0:
-
-			# Go to the last directory.
-			last_dir = self.directory_queue.pop()
-			self.GoTo(last_dir, True, False)
-
-	def GoTo(self, go_to, not_case_sensitive=False, go_back=True):
-		'''
-		This function go to a spesific specified path
-		:param goto: path to go (string)
-		:param not_case_sensitive: if to check not as case sensetive.
-		:param go_back: are we go back or forward.
-		:return: None
-		'''
-
-		# Add to the right queue (go back or forward).
-		if go_back:
-			self.directory_queue.append(self.current_directory)
-		else:
-			self.directory_requeue.append(self.current_directory)
-
-		# Get the selected item from the database dictionary.
-		db_pointer = self.GetDBPointer(go_to, not_case_sensitive)
-
-		# If the user dont want to go to the location (because the location doesn't exist in the dump).
-		if not db_pointer:
-			return
-
-		# Delete current displayed data from the treeview.
-		for i in self.tree.tree.get_children():
-			self.tree.tree.delete(i)
-			self.tree.visual_drag.delete(i)
-
-		# Get all the data
-		data, directories = self.GetDataAndDirectories(db_pointer)
-
-		# Insert the data and tag the directories as directory.
-		self.tree.insert_items(data)
-		for i in self.tree.tree.get_children():
-			dir_name = self.tree.tree.item(i, "text")
-			if dir_name in directories:
-				self.tree.tree.item(i, tags="tag_directory")
-				self.tree.visual_drag.item(i, tags="tag_directory")
-
-	def GoToFile(self, file_path, not_case_sensitive):
-		'''
-		Go to the directory and select the file.
-		:param file_path: the file path
-		:param not_case_sensitive: not case sensitive
-		:return: None
-		'''
-
-		# Go to the directory.
-		go_to = file_path[:file_path.rfind('\\')+1]
-		self.GoTo(go_to, not_case_sensitive)
-
-		# Go all over the items and select the right one.
-		file_name = file_path[file_path.rfind('\\')+1:]
-		for ht_row in self.tree.tree.get_children():
-			if str(self.tree.tree.item(ht_row)['values'][0]).lower() == str(file_name).lower():
-				self.tree.tree.focus(ht_row)
-				self.tree.tree.selection_set(ht_row)
-				self.tree.tree.see(ht_row)
+    '''
+    Gui class to display explorer like (from dictionary inside dictionary inside dictionary...)
+    Each key will be the first item in the table, padding with the tuple that inside the '|properties|' item
+    if there is no '|properties|' key in some key the information will be 0 padding
+    Thats also mean that you cannot create in your table on the first column a item named "|properties|"
+    '''
+    def __init__(self, master, my_dict, headers, searchTitle, resize=True, path=None, relate=None, *args, **kwargs):
+        Frame.__init__(self, master, *args, **kwargs)
+
+        # Configure gird
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # Init var
+        self.relate = relate
+        self.headers = headers
+        self.searchTitle = searchTitle
+        self.dict = my_dict
+
+        # Create the top frame (for the buttons and the entry).
+        top_frame = tkinter.ttk.Frame(self)
+
+        # Config search button
+        self.button_go_back = tkinter.ttk.Button(top_frame, text="<-", command=self.GoBack, width=5)
+        ToolTip(self.button_go_back, 'Forward (Alt + Left Arrow)')
+        self.button_go_back.pack(side=tk.LEFT)
+        self.button_ungo_back = tkinter.ttk.Button(top_frame, text="->", command=self.UnGo, width=5)
+        ToolTip(self.button_ungo_back, 'Forward (Alt + Right Arrow)')
+        self.button_ungo_back.pack(side=tk.LEFT)
+        search_exp_image = tk.PhotoImage(data=EXP_SEARCH_ICON)
+        search_exp_image_icon = search_exp_image.subsample(8, 8)
+        self.search_button = tk.Button(top_frame, image=search_exp_image_icon, command=self.control_f, height = 20, width = 20)
+        self.search_button.search_exp_image_icon = search_exp_image_icon
+        self.search_button.pack(side=tk.RIGHT)
+        ToolTip(self.search_button, 'Search')
+
+        # Config directory entry
+        self.entry_directory = tkinter.ttk.Entry(top_frame)
+        self.entry_directory.bind("<KeyRelease>", self.KeyRelease)
+        self.entry_directory.bind("<FocusOut>", lambda e: self.after(250, self.FoucusOut))
+        self.entry_directory.bind("<Return>", self.LVEnter)
+        self.entry_directory.pack(fill='x', ipady=1, pady=1)
+        self.c_selection = 0
+
+        top_frame.pack(side=tk.TOP, fill='x')
+
+        # Get all the data
+        data, directories = self.GetDataAndDirectories(self.dict)
+
+        # Init stuff like button, tree and bind events
+        self.current_directory = ""
+        self.last_data = self.last_tw = self.tw = None
+        self.directory_queue = []
+        self.directory_requeue = []
+        self.tree = TreeTable(self, headers=headers, data=data, resize=resize)
+        self.tree.tree['height'] = 22 if 22 < len(data) else len(data)
+        self.tree.pack(expand=YES, fill=BOTH)
+        self.tree.tree.bind("<Alt-Left>", self.GoBack)
+        self.tree.tree.bind("<BackSpace>", self.GoBack)
+        self.tree.tree.bind("<Alt-Right>", self.UnGo)
+        self.tree.tree.bind("<Double-1>", self.OnDoubleClick)
+        self.tree.tree.bind("<Return>", self.OnDoubleClick)
+        self.tree.tree.bind('<Control-f>', self.control_f)
+        self.tree.tree.bind('<Control-F>', self.control_f)
+        if has_csv:
+            self.tree.HeaderMenu.delete(5)
+            self.tree.HeaderMenu.insert_command(5, label='Export Explorer To Csv', command=self.export_table_csv)
+
+        # Tag the directories with "tag_directory" so all will be colored with yellow
+        def _from_rgb(rgb):
+            '''
+            Translates an rgb tuple of int to a tkinter friendly color code
+            '''
+            return "#%02x%02x%02x" % rgb
+        self.tree.tree.tag_configure('tag_directory', background=_from_rgb((252, 255, 124)))
+        self.tree.visual_drag.tag_configure('tag_directory', background=_from_rgb((252, 255, 124)))
+
+        # Tag all the directories (inside the directories list) with the "tag_directory".
+        for i in self.tree.tree.get_children():
+            dir_name = self.tree.tree.item(i,"text")
+
+            # Insert the directory to colored tag
+            if dir_name in directories:
+                self.tree.tree.item(i, tags="tag_directory")
+                self.tree.visual_drag.item(i, tags="tag_directory")
+
+        # Go to the path specify if specify
+        if path:
+            self.GoToFile(path, True)
+        else:
+
+            # If the first explorer have only one item go inside this item (recursively).
+            change_path = ''
+            while len(my_dict) == 1:
+                self.directory_queue.append(change_path)
+                change_path = '{}\\{}'.format(change_path, list(my_dict.keys())[0])
+                my_dict = my_dict[list(my_dict.keys())[0]]
+
+            # Go to the directory.
+            #self.GoTo(change_path)
+
+        # Bind exit if this is toplevel.
+        if not relate or self.winfo_toplevel() != relate:
+            def on_exit():
+                self.DetroyLV()
+                self.master.destroy()
+
+            # Exit the popup list.
+            self.winfo_toplevel().protocol("WM_DELETE_WINDOW", on_exit)
+
+    def control_f(self, event=None):
+        '''
+        This function spawn the search window.
+        :param event: None
+        :return: None
+        '''
+        app = ExpSearch(controller=self, dict=self.dict, dict_headers=self.headers)
+        x = self.relate.winfo_x() + 333
+        y = self.relate.winfo_y()
+        app.geometry("+%d+%d" % (x + ABS_X, y + ABS_Y))
+        app.title(self.searchTitle)
+        app.geometry("500x300")
+
+    def export_table_csv(self):
+        ''' Export the table to csv file '''
+        ans = messagebox.askyesnocancel("Export to csv",
+                                        "Did you mean to export all the explorer data or just this specific table?\npress yes to all the data", parent=self)
+        if ans == None:
+            return
+
+        selected = tkinter.filedialog.asksaveasfilename(parent=self)
+        if selected and selected != '':
+
+            def export_specific_dict(csv_writer, dict, path):
+
+                # Go all over the dictionary.
+                for key in dict:
+
+                    # Return if this is the information key.
+                    if key == '|properties|':
+                        continue
+
+                    # If we want to export all the data or just the current
+                    if ans:
+                        csv_writer.writerow(['{} {}'.format('~' * path.count('\\'), key)] + (list(dict[key]['|properties|']) if '|properties|' in dict[key] else [0 for i in range(len(self.headers)-1)]))
+                    elif path == self.current_directory:
+                        csv_writer.writerow(['{} {}'.format('~' * path.count('\\'), key)] + (list(dict[key]['|properties|']) if '|properties|' in dict[key] else [0 for i in range(len(self.headers)-1)]))
+                        continue
+                    elif not path.lower() in self.current_directory.lower():
+                        return
+
+                    export_specific_dict(csv_writer, dict[key], '{}\{}'.format(path, key))
+
+
+            with open(selected, 'w') as fhandle:
+                csv_writer = csv.writer(fhandle)
+                csv_writer.writerow(self.headers)
+                export_specific_dict(csv_writer, self.dict, '')
+
+    def GetDBPointer(self, path, not_case_sensitive=False, return_none_on_bad_path=False):
+        '''
+        Return the specific dictionary (inside the db dict [self.dict]) that describe the given path
+        :param path: the path to describe
+        :param not_case_sensitive: False - > case sensitive
+        :return: db pointer dictionary somewhere inside the dictionary that describe the given path.
+        '''
+        db_pointer = self.dict
+        path_list = path.split("\\")
+
+        # Remove none item.
+        if path_list[0] == '':
+            path_list = path_list[1:]
+
+        # Return in empty path.
+        if return_none_on_bad_path and len(path_list) == 0:
+            return
+
+        current_path = ''
+        index = 0
+        for key in path_list:
+            if key in db_pointer:
+                db_pointer = db_pointer[key]
+
+            # Search with lower case
+            elif not_case_sensitive:
+                for c_key in db_pointer:
+                    if c_key.lower() == key.lower():
+                        db_pointer = db_pointer[c_key]
+                        break
+                else:
+
+                    if len(path_list) == index+1:
+                        continue
+
+                    if return_none_on_bad_path:
+                        return
+
+                    # Unable to find the full go_to path
+                    ans = messagebox.askyesnocancel("Notice",
+                                                    "Unnable to find this path ({}),\n\nThis path found: {}\nDo you want to go there?".format(
+                                                        path, current_path), parent=self)
+                    if not ans:
+                        return
+                    else:
+                        # Set the curernt directory.
+                        self.current_directory = current_path
+                        self.entry_directory.delete(0, tk.END)
+                        self.entry_directory.insert(0, self.current_directory)
+                        return db_pointer
+
+            elif return_none_on_bad_path and len(path_list) -1  > index:
+                return
+            index += 1
+            current_path += '\{}'.format(key)
+
+        # Set the curernt directory.
+        self.current_directory = path
+        self.entry_directory.delete(0, tk.END)
+        self.entry_directory.insert(0, self.current_directory)
+        return db_pointer
+
+    def GetDataAndDirectories(self, db_pointer):
+        '''
+        Return the data, directory for a given pointer in the dictionary db
+        data - > the data sould be displayed for the db_pointer directory
+        directories - > is the directories that inside the data
+        :param db_pointer: pointer in the directory db (self.my_dict)
+        :return: (data, directories)
+        '''
+        data = []
+        directories = []
+        for key in list(db_pointer.keys()):
+
+            # Get all the data from the "|properties|" key in each dictionary key that have properties (informatio)
+            if key != "|properties|":
+
+                # Get the row items from the "|properties|" key.
+                # Pad with zero in case there is no "|properties|" key.
+                if "|properties|" in db_pointer[key]:
+                    my_tup = db_pointer[key]["|properties|"]
+                else:
+                    my_tup = tuple([0 for i in range(len(self.headers) - 1)])
+
+                # If this is directory insert it to the directories list witch will be colored in yellow.
+                if len(db_pointer[key]) - ("|properties|" in db_pointer[key]) > 0:
+                    directories.append(key)
+
+                # Append the key name to the tuple.
+                my_tup = (key,) + my_tup if type(my_tup) == tuple else (key, str(my_tup))
+
+                # Insert the spesific row to the list of all the rows.
+                data.append(my_tup)
+        return data, directories
+
+    def KeyRelease(self, event=None):
+        '''
+        Display all the directories inside the current directory
+        :param event: None
+        :return: None
+        '''
+        data = self.entry_directory.get()
+
+        # If key down or up or left or right or enter return and let the other handle handle it.
+        if event and event.keysym_num in [65361, 65362, 65363, 65293]:
+            return
+        elif event and event.keysym_num in [65364, 65307] and self.tw and self.tw.winfo_exists(): # Key down
+
+            # If ESC pressed detroyd the window and return
+            if event.keysym_num == 65307:
+                self.DetroyLV()
+
+            return
+
+        # Return if non printable key pressed (nothing add to the entry_directory).
+        elif event and event.keysym_num != 65364:# and self.tw:
+            if data == self.last_data:
+                return
+
+        if self.tw:
+            self.DetroyLV()
+
+        # Add the \ if the entry is empty.
+        if data == '':
+            data = '\\'
+
+        self.last_data = data
+
+        db_pointer = self.GetDBPointer(data, True, return_none_on_bad_path=True)
+
+        # Alert the user that this path not exist (except if he try to delete).
+        if not db_pointer:
+            if not (event and event.keysym.lower() == 'backspace'):
+                self.bell()
+                messagebox.showerror('Error', 'Explorer Can\'t Find {},\nCheck the spelling and try again.'.format(data), parent=self)
+            return
+
+        values = []
+
+        # Get all the good directories based on the user type.
+        for dir in self.GetDataAndDirectories(db_pointer)[1]:
+            c_path = '{}\\{}'.format(data[:data.rfind('\\')], dir)
+
+            # Good data
+            if data.lower() in c_path.lower():
+                values.append(c_path)
+
+        # If there is more than one dir than post.
+        if len(values) > 0:
+
+            # Get position to post the toplevel.
+            x = self.entry_directory.winfo_rootx()
+            y = self.entry_directory.winfo_rooty() + 20
+
+            # Create the top level with frame.
+            self.last_tw = str(self.tw)
+            self.tw = tw = tk.Toplevel()
+            self.my_frame = tkinter.ttk.Frame(self.tw, width=self.entry_directory.winfo_reqwidth() - 1)
+            self.values = values
+            tw.wm_overrideredirect(1)
+            tw.wm_geometry("+%d+%d" % (x, y))
+
+            # Create and pack the listbox with scrollbar
+            self.lv = lv = tk.Listbox(self.my_frame, height = len(values) if len(values) < 10 else 10)
+            self.scrollbar = scrollbar = Scrollbar(self.my_frame, orient="vertical")
+            scrollbar.config(command=self.lv.yview)
+            scrollbar.pack(side=tk.RIGHT, fill="y")
+            self.lv.config(yscrollcommand=scrollbar.set)
+            lv['selectmode'] = tk.SINGLE
+
+            # Bind commands.
+            self.entry_directory.bind("<Return>", self.LVEnter)
+            self.entry_directory.bind('<Up>', self.Up)
+            self.entry_directory.bind('<Down>', self.Down)
+
+            # Insert data to the list (all the pathes).
+            for dis in values:
+                lv.insert(END, dis)
+
+            # Select the first item.
+            lv.selection_set(0)
+
+            # Bind Escape - > destroy and click -> open to the listbox.
+            lv.bind("<Escape>", self.DetroyLV)
+            #lv.bind('<Button-1>', self.LVEnter)
+            lv.bind('<ButtonRelease-1>', self.LVEnter)
+
+            # pack all the data.
+            lv.pack(fill=tk.BOTH)
+            self.my_frame.pack(fill=tk.BOTH)
+            self.update()
+
+            # Windows destroyed..
+            try:
+                h = self.lv.winfo_geometry().split('x')[1].split('+')[0]
+                tw.geometry("{}x{}".format(self.entry_directory.winfo_width() - 2, h))
+            except tk.TclError:
+                pass
+
+    def Down(self, event):
+        '''
+        KeyDown event - set selection to one down item
+        :param event: None
+        :return: None
+        '''
+
+        # Cleare the selected item
+        self.lv.selection_clear(self.c_selection)
+
+        # Add one if we less or equals to the number of elements in the list else 0
+        self.c_selection = self.c_selection + 1 if self.c_selection < len(self.values) - 1 else 0
+
+        # Go to view the item and select.
+        self.lv.yview(self.c_selection)
+        self.lv.selection_set(self.c_selection)
+
+    def Up(self, event):
+        '''
+        KeyUp event - set selection to one up item
+        :param event: None
+        :return: None
+        '''
+        # If we on the top destroyed.
+        if self.c_selection == 0:
+            self.DetroyLV()
+            return
+
+        # Set selection and position to the selected item.
+        self.lv.selection_clear(self.c_selection)
+        self.c_selection -= 1
+        self.lv.yview(self.c_selection)
+        self.lv.selection_set(self.c_selection)
+
+    def LVEnter(self, event=None):
+        '''
+        On enter/ click go to the selected item set the directory entry and detroyed the listbox.
+        :param event: None
+        :return: None
+        '''
+
+        # Check if we exit the window and this didnt destroyd
+        if not self.entry_directory.winfo_exists():
+            self.tw.destroy()
+            return
+
+        # If there is no goto and popup return.
+        if self.tw and len(self.lv.curselection()) != 0:
+            go_to = self.lv.get(self.lv.curselection())
+        else:
+            go_to = self.entry_directory.get()
+
+        # Go to the self.entry_directory.
+        self.GoTo(go_to, True)
+
+        # Update the entry directory (add \ to the end and generate keyrelease).
+        if not self.current_directory.endswith('\\'):
+            self.entry_directory.delete(0, tk.END)
+            self.entry_directory.insert(0, '{}\\'.format(self.current_directory))
+
+        self.KeyRelease(None) #self.entry_directory.event_generate('<KeyRelease>')
+
+        self.entry_directory.focus_set()
+
+    def FoucusOut(self, event=None):
+        '''
+        If we not focus some element of the toplevel exit.
+        :param event: None
+        :return: None
+        '''
+
+        # Check if we focus out the entry and the top level or some of his elements.
+        if self.tw and not self.focus_get() in [self.last_tw, self.tw, self.my_frame, self.lv, self.scrollbar] and not self.entry_directory.focus_get().__class__ == tkinter.ttk.Entry:
+            self.DetroyLV()
+
+    def DetroyLV(self, event=None):
+        '''
+        Destroyd the listbox and unbind all the current unnecessary binding methonds.
+        :param event:
+        :return:
+        '''
+
+        # Do this only if the top exist.
+        if self.tw and self.tw:
+            self.tw.destroy()
+            self.tw = None
+            #del self.tw
+            self.c_selection = 0
+            #self.entry_directory.bind('<Return>', lambda e: 'break')
+            self.entry_directory.bind("<Return>", self.LVEnter)
+            self.entry_directory.bind('<Up>', lambda e: 'break')
+            self.entry_directory.bind('<Down>', lambda e: 'break')
+
+    def OnDoubleClick(self, event):
+        '''
+        This function open directory (replace all the items in the tree to the subdirectory that was double clicked).
+        :param event: None
+        :return: None
+        '''
+
+        # Reset the user search
+        self.tree.row_search = ('', 0)
+
+        # Double click on table header to resize
+        if event and event.y < 25 and event.y > 0:
+            try:
+                if self.tree.tree.identify_region(event.x, event.y) == 'separator':
+                    self.tree.resize_col(self.tree.tree.identify_column(event.x))
+                return
+            except tk.TclError:
+                return
+
+        # Double click where no item selected
+        elif len(self.tree.tree.selection()) == 0 :
+            return
+
+        # Get the selected item
+        item = self.tree.tree.selection()[0]
+        clicked_file = self.tree.tree.item(item, "text")
+        tags = self.tree.tree.item(item, "tags")
+        if not 'tag_directory' in tags:
+            return
+
+        # Append the current directory to the last visited directory list (self.directory_queue).
+        self.directory_queue.append(self.current_directory)
+
+        # Change the current directory
+        if self.current_directory.endswith('\\'):
+            self.current_directory += clicked_file
+        else:
+            self.current_directory += "\{}".format(clicked_file)
+
+        # Get the selected item from the database dictionary.
+        path = self.current_directory
+        db_pointer = self.GetDBPointer(path)
+
+        # Get all the data
+        data, directories = self.GetDataAndDirectories(db_pointer)
+
+        # Validate that this is directory (more that 0 files inside)
+        if len(data) > 0:
+
+            # Reset the undo list
+            self.directory_requeue = []
+
+            # Delete the previews data
+            for i in self.tree.tree.get_children():
+                self.tree.tree.delete(i)
+                self.tree.visual_drag.delete(i)
+
+            # Insert the new data.
+            self.tree.insert_items(data)
+
+            # Append the all the directories from the directories_list to the tag_directory (so they will colored as directory).
+            for i in self.tree.tree.get_children():
+                dir_name = self.tree.tree.item(i,"text")
+                if dir_name in directories:
+                    self.tree.tree.item(i, tags="tag_directory")
+                    self.tree.visual_drag.item(i, tags="tag_directory")
+
+    def UnGo(self, event=None):
+        '''
+        This function is undo fore goback.
+        :param event: None
+        :return: None
+        '''
+
+        # Reset the user search
+        self.tree.row_search = ('', 0)
+
+        # Check that the directory_queue is not empty (the list of the directories history).
+        if len(self.directory_requeue) > 0:
+
+            # Go to the last directory.
+            prev_dir = self.directory_requeue.pop()
+            self.GoTo(prev_dir, True)
+
+    def GoBack(self, event=None):
+        '''
+        This function go to the previews directory.
+        :param event: None
+        :return: None
+        '''
+
+        # Reset the user search
+        self.tree.row_search = ('', 0)
+
+        # Check that the directory_queue is not empty (the list of the directories history).
+        if len(self.directory_queue) > 0:
+
+            # Go to the last directory.
+            last_dir = self.directory_queue.pop()
+            self.GoTo(last_dir, True, False)
+
+    def GoTo(self, go_to, not_case_sensitive=False, go_back=True):
+        '''
+        This function go to a spesific specified path
+        :param goto: path to go (string)
+        :param not_case_sensitive: if to check not as case sensetive.
+        :param go_back: are we go back or forward.
+        :return: None
+        '''
+
+        # Add to the right queue (go back or forward).
+        if go_back:
+            self.directory_queue.append(self.current_directory)
+        else:
+            self.directory_requeue.append(self.current_directory)
+
+        # Get the selected item from the database dictionary.
+        db_pointer = self.GetDBPointer(go_to, not_case_sensitive)
+
+        # If the user dont want to go to the location (because the location doesn't exist in the dump).
+        if not db_pointer:
+            return
+
+        # Delete current displayed data from the treeview.
+        for i in self.tree.tree.get_children():
+            self.tree.tree.delete(i)
+            self.tree.visual_drag.delete(i)
+
+        # Get all the data
+        data, directories = self.GetDataAndDirectories(db_pointer)
+
+        # Insert the data and tag the directories as directory.
+        self.tree.insert_items(data)
+        for i in self.tree.tree.get_children():
+            dir_name = self.tree.tree.item(i, "text")
+            if dir_name in directories:
+                self.tree.tree.item(i, tags="tag_directory")
+                self.tree.visual_drag.item(i, tags="tag_directory")
+
+    def GoToFile(self, file_path, not_case_sensitive):
+        '''
+        Go to the directory and select the file.
+        :param file_path: the file path
+        :param not_case_sensitive: not case sensitive
+        :return: None
+        '''
+
+        # Go to the directory.
+        go_to = file_path[:file_path.rfind('\\')+1]
+        self.GoTo(go_to, not_case_sensitive)
+
+        # Go all over the items and select the right one.
+        file_name = file_path[file_path.rfind('\\')+1:]
+        for ht_row in self.tree.tree.get_children():
+            if str(self.tree.tree.item(ht_row)['values'][0]).lower() == str(file_name).lower():
+                self.tree.tree.focus(ht_row)
+                self.tree.tree.selection_set(ht_row)
+                self.tree.tree.see(ht_row)
 
 class FileExplorer(Explorer):
 
-	def __init__(self, parent, controller):
-		tk.Frame.__init__(self, parent)
-		label = tk.Label(self, text="Files Summary", font=controller.title_font)
-		label.pack(side="top", fill="x", pady=10)
-		self.exp = Explorer(self, controller.FileSummary, ("File Path", "File Type", "Size"), 'Search File', relate=self)
-		self.exp.pack(expand=YES, fill=BOTH)
-		self.controller = controller
-		self.dict = self.controller.FileSummary
-		self.exp.tree.aMenu.add_command(label='View All Pages', command=self.ViewAllPages)
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        label = tk.Label(self, text="Files Summary", font=controller.title_font)
+        label.pack(side="top", fill="x", pady=10)
+        self.exp = Explorer(self, controller.FileSummary, ("File Path", "File Type", "Size"), 'Search File', relate=self)
+        self.exp.pack(expand=YES, fill=BOTH)
+        self.controller = controller
+        self.dict = self.controller.FileSummary
+        self.exp.tree.aMenu.add_command(label='View All Pages', command=self.ViewAllPages)
 
 
-	def ViewAllPages(self):
-		item = self.exp.tree.tree.selection()[0]
-		clicked_file = self.exp.tree.tree.item(item,"text")
-		file_pages = []
-		print(clicked_file)
-		c_path = self.exp.entry_directory.get() + ("" if self.exp.entry_directory.get().endswith('\\') else '\\')
-		clicked_file = '{}{}'.format(c_path, clicked_file)
-		print('clicked_file', clicked_file)
-		for page_info in self.controller.PageSummary:
-			if page_info[6] == clicked_file:
-					file_pages.append(page_info)
+    def ViewAllPages(self):
+        item = self.exp.tree.tree.selection()[0]
+        clicked_file = self.exp.tree.tree.item(item,"text")
+        file_pages = []
+        print(clicked_file)
+        c_path = self.exp.entry_directory.get() + ("" if self.exp.entry_directory.get().endswith('\\') else '\\')
+        clicked_file = '{}{}'.format(c_path, clicked_file)
+        print('clicked_file', clicked_file)
+        for page_info in self.controller.PageSummary:
+            if page_info[6] == clicked_file:
+                    file_pages.append(page_info)
 
-		print(file_pages)
+        print(file_pages)
 
-		app = tk.Toplevel()
-		app.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
-		app.columnconfigure(0, weight=1)
-		app.rowconfigure(1, weight=1)
-		app.controller = self.controller
-		frame = PhysicalRanges(app, app, data=file_pages)
-		frame.pack(expand=YES, fill=BOTH)
+        app = tk.Toplevel()
+        app.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
+        app.columnconfigure(0, weight=1)
+        app.rowconfigure(1, weight=1)
+        app.controller = self.controller
+        frame = PhysicalRanges(app, app, data=file_pages)
+        frame.pack(expand=YES, fill=BOTH)
 
 class PI(tk.Toplevel):
 
-	def __init__(self, addr, va, pfn_info, *args, **kwargs):
-		tk.Toplevel.__init__(self, *args, **kwargs)
-		self.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
-		label = tk.Label(self, text="Page Full Info", font=self.title_font)
-		label.pack(side="top", fill="x", pady=10)
+    def __init__(self, addr, va, pfn_info, *args, **kwargs):
+        tk.Toplevel.__init__(self, *args, **kwargs)
+        self.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
+        label = tk.Label(self, text="Page Full Info", font=self.title_font)
+        label.pack(side="top", fill="x", pady=10)
 
 
-		pfn_index = addr >> 12
-		pfn_address = pfn_info.get_pfn_from_page_address(addr)
-		page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, offset, image, pool_tag_list = pfn_info.pfn_info(pfn_address, va=va, pool=True)
-		pool_tags = '\n'
-		if len(pool_tag_list) > 0:
-			for i in pool_tag_list:
-				pool_tags+='\t{}: {}'.format(i, POOL_TAGS[i])
-		#lb_info = tk.Label(self, text='PFNInfo:\nPFN Index: {} -> PFN Address: {}\nPage_list: {}\nPriority: {}\nReference: {}\nShare Count: {}\nPage Color: {}\nPte Type: {}\nProtection: {}\nUse: {}\nFile Name: {}\nPool Tags:{}\n'.format(index, va, page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, pool_tags))
-		lb_info = tk.Label(self, text='PFNInfo:\nPFN Index: {} -> PFN Address: {}\nPage_list: {}\nPriority: {}\nReference: {}\nShare Count: {}\nPage Color: {}\nPte Type: {}\nProtection: {}\nUse: {}\nImage:{}\nFile Name: {}\nOffset:{}\nPool Tags:{}\n'.format(pfn_index, pfn_address, page_list, priority, reference, share_count, page_color, pte_type, protection, use, image, file_name, offset, pool_tags))
-		lb_info.pack()
+        pfn_index = addr >> 12
+        pfn_address = pfn_info.get_pfn_from_page_address(addr)
+        page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, offset, image, pool_tag_list = pfn_info.pfn_info(pfn_address, va=va, pool=True)
+        pool_tags = '\n'
+        if len(pool_tag_list) > 0:
+            for i in pool_tag_list:
+                pool_tags+='\t{}: {}'.format(i, POOL_TAGS[i])
+        #lb_info = tk.Label(self, text='PFNInfo:\nPFN Index: {} -> PFN Address: {}\nPage_list: {}\nPriority: {}\nReference: {}\nShare Count: {}\nPage Color: {}\nPte Type: {}\nProtection: {}\nUse: {}\nFile Name: {}\nPool Tags:{}\n'.format(index, va, page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, pool_tags))
+        lb_info = tk.Label(self, text='PFNInfo:\nPFN Index: {} -> PFN Address: {}\nPage_list: {}\nPriority: {}\nReference: {}\nShare Count: {}\nPage Color: {}\nPte Type: {}\nProtection: {}\nUse: {}\nImage:{}\nFile Name: {}\nOffset:{}\nPool Tags:{}\n'.format(pfn_index, pfn_address, page_list, priority, reference, share_count, page_color, pte_type, protection, use, image, file_name, offset, pool_tags))
+        lb_info.pack()
 
 #HexDump start
 
 class HexDump(tk.Toplevel):
 
-	def __init__(self,file_name, file_data, row_len, *args, **kwargs):
-		tk.Toplevel.__init__(self, *args, **kwargs)
-		self.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
+    def __init__(self,file_name, file_data, row_len, *args, **kwargs):
+        tk.Toplevel.__init__(self, *args, **kwargs)
+        self.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
 
-		self.row_len = row_len
-		self.file_name = file_name
-		self.file_data = file_data
+        self.row_len = row_len
+        self.file_name = file_name
+        self.file_data = file_data
 
-		tabcontroller = NoteBook(self)
-		self.frames = {}
+        tabcontroller = NoteBook(self)
+        self.frames = {}
 
-		# Create all the classes (tabs in the properties).
-		for F in (HDHexDump, HDStrings):
-			page_name = F.__name__
-			frame = F(parent=tabcontroller, controller=self)
-			self.frames[page_name] = frame
-			frame.grid(row=0, column=0, sticky=E + W + N + S)
-			tabcontroller.add(frame, text=page_name)
+        # Create all the classes (tabs in the properties).
+        for F in (HDHexDump, HDStrings):
+            page_name = F.__name__
+            frame = F(parent=tabcontroller, controller=self)
+            self.frames[page_name] = frame
+            frame.grid(row=0, column=0, sticky=E + W + N + S)
+            tabcontroller.add(frame, text=page_name)
 
-		tabcontroller.enable_traversal()
-		tabcontroller.pack(fill=BOTH, expand=1)
+        tabcontroller.enable_traversal()
+        tabcontroller.pack(fill=BOTH, expand=1)
 
 class HDStrings(Frame):
 
-	def __init__(self, parent, controller):
-		Frame.__init__(self, parent)
-		self.controller = controller
-		label = tk.Label(self, text="Strings", font=controller.title_font)
-		label.pack(side="top", fill="x", pady=10)
-		data = get_ascii_unicode(self.controller.file_data)
-		self.strings_tree = TreeTable(self, headers=("Offset", "ASSCI"), data=data[0], resize=True)
-		self.strings_tree.tree['height'] = 22 if 22 < len(data) else len(data)
-		self.uni_tree = TreeTable(self, headers=("Offset", "UNICODE"), data=data[1], resize=True)
-		self.uni_tree.tree['height'] = 22 if 22 < len(data) else len(data)
-		self.strings_tree.pack(expand=YES, fill=BOTH)
-		self.uni_tree.pack(expand=YES, fill=BOTH)
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+        label = tk.Label(self, text="Strings", font=controller.title_font)
+        label.pack(side="top", fill="x", pady=10)
+        data = get_ascii_unicode(self.controller.file_data)
+        self.strings_tree = TreeTable(self, headers=("Offset", "ASSCI"), data=data[0], resize=True)
+        self.strings_tree.tree['height'] = 22 if 22 < len(data) else len(data)
+        self.uni_tree = TreeTable(self, headers=("Offset", "UNICODE"), data=data[1], resize=True)
+        self.uni_tree.tree['height'] = 22 if 22 < len(data) else len(data)
+        self.strings_tree.pack(expand=YES, fill=BOTH)
+        self.uni_tree.pack(expand=YES, fill=BOTH)
 
 class HDHexDump(Frame):
 
-	def __init__(self, parent, controller):
-		Frame.__init__(self, parent)
-		self.controller = controller
-		label = tk.Label(self, text="HexDump", font=controller.title_font)
-		label.pack(side="top", fill="x", pady=10)
-		data = []
-		ascii = []
-		hex_list = []
-		count = 0
-		for byte in self.controller.file_data:
-			hex_list.append("{:02x}".format(byte))
-			ascii.append(chr(byte) if 0x20 < byte <= 0x7E else ".")
-			if (count % self.controller.row_len) == self.controller.row_len -1:
-				data.append((hex(count), "  ".join(hex_list[count - (self.controller.row_len -1):count + 1]), "".join(ascii[count - (self.controller.row_len -1):count + 1])))
-			count += 1
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+        label = tk.Label(self, text="HexDump", font=controller.title_font)
+        label.pack(side="top", fill="x", pady=10)
+        data = []
+        ascii = []
+        hex_list = []
+        count = 0
+        for byte in self.controller.file_data:
+            hex_list.append("{:02x}".format(byte))
+            ascii.append(chr(byte) if 0x20 < byte <= 0x7E else ".")
+            if (count % self.controller.row_len) == self.controller.row_len -1:
+                data.append((hex(count), "  ".join(hex_list[count - (self.controller.row_len -1):count + 1]), "".join(ascii[count - (self.controller.row_len -1):count + 1])))
+            count += 1
 
-		self.values_table = TreeTable(self, headers=("Offset", "Hex", "Data"), data=data, resize=True)
-		self.values_table.tree['height'] = 22
-		self.values_table.pack(expand=YES, fill=BOTH)
+        self.values_table = TreeTable(self, headers=("Offset", "Hex", "Data"), data=data, resize=True)
+        self.values_table.tree['height'] = 22
+        self.values_table.pack(expand=YES, fill=BOTH)
 #HexDump end.
 
 class ToolTip(object):
-	'''
-	the square that apeare when we on widget.
-	'''
-	def __init__(self, widget, text='help message'):
-		# Init Class Variables.
-		self.widget = widget
-		self.text = text
-		self.tipwindow = None
-		self.id = None
-		self.x = self.y = 0
+    '''
+    the square that apeare when we on widget.
+    '''
+    def __init__(self, widget, text='help message'):
+        # Init Class Variables.
+        self.widget = widget
+        self.text = text
+        self.tipwindow = None
+        self.id = None
+        self.x = self.y = 0
 
-		# Event Binding.
-		self.widget.bind("<Enter>", self.showtip)
-		self.widget.bind("<Leave>", self.hidetip)
-		self.widget.bind("<Button-1>", self.hidetip)
+        # Event Binding.
+        self.widget.bind("<Enter>", self.showtip)
+        self.widget.bind("<Leave>", self.hidetip)
+        self.widget.bind("<Button-1>", self.hidetip)
 
 
-	def showtip(self, event=None):
-		'''
-		Display text in tooltip window (on Enter).
-		:param event: None
-		:return: None
-		'''
-		self.event = event
-		if self.tipwindow or not self.text:
-			return
+    def showtip(self, event=None):
+        '''
+        Display text in tooltip window (on Enter).
+        :param event: None
+        :return: None
+        '''
+        self.event = event
+        if self.tipwindow or not self.text:
+            return
 
-		# Place the tooltip.
-		x, y, cx, cy = self.event.x, self.event.y, self.event.x, self.event.y
-		x = x + self.widget.winfo_rootx()+10
-		y = cy + self.widget.winfo_rooty()+10
-		self.tipwindow = tw = tk.Toplevel()
+        # Place the tooltip.
+        x, y, cx, cy = self.event.x, self.event.y, self.event.x, self.event.y
+        x = x + self.widget.winfo_rootx()+10
+        y = cy + self.widget.winfo_rooty()+10
+        self.tipwindow = tw = tk.Toplevel()
 
-		# Put the text and pack the tooltip.
-		tw.wm_overrideredirect(1)
-		tw.wm_geometry("+%d+%d" % (x, y))
-		label = tk.Label(tw, text=self.text, justify=LEFT,
-					  background="#ffffe0", relief=SOLID, borderwidth=1,
-					  font=("tahoma", "8", "normal"))
-		label.pack(ipadx=1)
+        # Put the text and pack the tooltip.
+        tw.wm_overrideredirect(1)
+        tw.wm_geometry("+%d+%d" % (x, y))
+        label = tk.Label(tw, text=self.text, justify=LEFT,
+                      background="#ffffe0", relief=SOLID, borderwidth=1,
+                      font=("tahoma", "8", "normal"))
+        label.pack(ipadx=1)
 
-	def hidetip(self, event=None):
-		'''
-		Hide the tip (on leave).
-		:param event: None
-		:return: None
-		'''
-		tw = self.tipwindow
-		self.tipwindow = None
+    def hidetip(self, event=None):
+        '''
+        Hide the tip (on leave).
+        :param event: None
+        :return: None
+        '''
+        tw = self.tipwindow
+        self.tipwindow = None
 
-		# Destroy the tooltip if exist.
-		if tw:
-			tw.destroy()
+        # Destroy the tooltip if exist.
+        if tw:
+            tw.destroy()
 
 class TreeToolTip(object):
-	'''
-	the square that apeare when we on Treetable(treeview) item.
-	'''
-	def __init__(self, widget, event):
-		self.widget = widget
-		self.event = event
-		self.tipwindow = None
-		self.id = None
-		self.x = self.y = 0
+    '''
+    the square that apeare when we on Treetable(treeview) item.
+    '''
+    def __init__(self, widget, event):
+        self.widget = widget
+        self.event = event
+        self.tipwindow = None
+        self.id = None
+        self.x = self.y = 0
 
-	def showtip(self, text):
-		'''
-		Display text in tooltip window (on Enter).
-		:param text: text to display
-		:return: None
-		'''
+    def showtip(self, text):
+        '''
+        Display text in tooltip window (on Enter).
+        :param text: text to display
+        :return: None
+        '''
 
-		self.text = text
-		if self.tipwindow or not self.text:
-			return
+        self.text = text
+        if self.tipwindow or not self.text:
+            return
 
-		# Place and pack the tooltip.
-		x, y, cx, cy = self.event.x, self.event.y, self.event.x, self.event.y#self.widget.bbox("insert")
-		x = x + self.widget.winfo_rootx()+10# + 57#self.widget.x_root + 57
-		y = cy + self.widget.winfo_rooty()+10# +27# find the real one.self.widget.y_root + 27
-		self.tipwindow = tw = tk.Toplevel()
-		tw.wm_overrideredirect(1)
-		tw.wm_geometry("+%d+%d" % (x, y))
-		label = tk.Label(tw, text=self.text, justify=LEFT,
-					  background="#ffffe0", relief=SOLID, borderwidth=1,
-					  font=("tahoma", "8", "normal"))
-		label.pack(ipadx=1)
+        # Place and pack the tooltip.
+        x, y, cx, cy = self.event.x, self.event.y, self.event.x, self.event.y#self.widget.bbox("insert")
+        x = x + self.widget.winfo_rootx()+10# + 57#self.widget.x_root + 57
+        y = cy + self.widget.winfo_rooty()+10# +27# find the real one.self.widget.y_root + 27
+        self.tipwindow = tw = tk.Toplevel()
+        tw.wm_overrideredirect(1)
+        tw.wm_geometry("+%d+%d" % (x, y))
+        label = tk.Label(tw, text=self.text, justify=LEFT,
+                      background="#ffffe0", relief=SOLID, borderwidth=1,
+                      font=("tahoma", "8", "normal"))
+        label.pack(ipadx=1)
 
-	def hidetip(self):
-		'''
-		Hide the tip (on leave).
-		:return: None
-		'''
-		tw = self.tipwindow
-		self.tipwindow = None
-		if tw:
-			tw.destroy()
+    def hidetip(self):
+        '''
+        Hide the tip (on leave).
+        :return: None
+        '''
+        tw = self.tipwindow
+        self.tipwindow = None
+        if tw:
+            tw.destroy()
 
 class DragAndDropListbox(tk.Listbox):
-	''' A tk listbox with drag'n'drop reordering of entries. '''
-	def __init__(self, master, **kw):
-		kw['selectmode'] = tk.MULTIPLE
-		kw['activestyle'] = 'none'
-		tk.Listbox.__init__(self, master, kw)
-		self.bind('<Button-1>', self.getState, add='+')
-		self.bind('<Button-1>', self.setCurrent, add='+')
-		self.bind('<B1-Motion>', self.shiftSelection)
-		self.curIndex = None
-		self.curState = None
+    ''' A tk listbox with drag'n'drop reordering of entries. '''
+    def __init__(self, master, **kw):
+        kw['selectmode'] = tk.MULTIPLE
+        kw['activestyle'] = 'none'
+        tk.Listbox.__init__(self, master, kw)
+        self.bind('<Button-1>', self.getState, add='+')
+        self.bind('<Button-1>', self.setCurrent, add='+')
+        self.bind('<B1-Motion>', self.shiftSelection)
+        self.curIndex = None
+        self.curState = None
 
-	def setCurrent(self, event):
-		''' gets the current index of the clicked item in the listbox '''
-		self.curIndex = self.nearest(event.y)
+    def setCurrent(self, event):
+        ''' gets the current index of the clicked item in the listbox '''
+        self.curIndex = self.nearest(event.y)
 
-	def getState(self, event):
-		''' checks if the clicked item in listbox is selected '''
-		i = self.nearest(event.y)
-		self.curState = self.selection_includes(i)
+    def getState(self, event):
+        ''' checks if the clicked item in listbox is selected '''
+        i = self.nearest(event.y)
+        self.curState = self.selection_includes(i)
 
-	def shiftSelection(self, event):
-		''' shifts item up or down in listbox '''
-		i = self.nearest(event.y)
-		if self.curState == 1:
-			self.selection_set(self.curIndex)
-		else:
-			self.selection_clear(self.curIndex)
-		if i < self.curIndex:
-			# Moves up
-			x = self.get(i)
-			selected = self.selection_includes(i)
-			self.delete(i)
-			self.insert(i+1, x)
-			if selected:
-				self.selection_set(i+1)
-			self.curIndex = i
-		elif i > self.curIndex:
-		# Moves down
-			x = self.get(i)
-			selected = self.selection_includes(i)
-			self.delete(i)
-			self.insert(i-1, x)
-			if selected:
-				self.selection_set(i-1)
-			self.curIndex = i
+    def shiftSelection(self, event):
+        ''' shifts item up or down in listbox '''
+        i = self.nearest(event.y)
+        if self.curState == 1:
+            self.selection_set(self.curIndex)
+        else:
+            self.selection_clear(self.curIndex)
+        if i < self.curIndex:
+            # Moves up
+            x = self.get(i)
+            selected = self.selection_includes(i)
+            self.delete(i)
+            self.insert(i+1, x)
+            if selected:
+                self.selection_set(i+1)
+            self.curIndex = i
+        elif i > self.curIndex:
+        # Moves down
+            x = self.get(i)
+            selected = self.selection_includes(i)
+            self.delete(i)
+            self.insert(i-1, x)
+            if selected:
+                self.selection_set(i-1)
+            self.curIndex = i
 
 class MoveLists(tk.Toplevel):
-	'''
-	2 list box that can move item between them
-	'''
-	def __init__(self, display, hide, func, *args, **kwargs):
-		tk.Toplevel.__init__(self, *args, **kwargs)
-		self.display = display
-		self.hide = hide
-		self.func = func
+    '''
+    2 list box that can move item between them
+    '''
+    def __init__(self, display, hide, func, *args, **kwargs):
+        tk.Toplevel.__init__(self, *args, **kwargs)
+        self.display = display
+        self.hide = hide
+        self.func = func
 
-		frame = Frame(self)
-		frame2 = Frame(self)
+        frame = Frame(self)
+        frame2 = Frame(self)
 
-		frame3 = Frame(frame)
-		frame4 = Frame(frame2)
+        frame3 = Frame(frame)
+        frame4 = Frame(frame2)
 
-		self.tree1 = DragAndDropListbox(frame3)
-		self.tree1.bind("<ButtonRelease-1>", self.update_table)
+        self.tree1 = DragAndDropListbox(frame3)
+        self.tree1.bind("<ButtonRelease-1>", self.update_table)
 
-		self.tree2 = tk.Listbox(frame4, selectmode=tk.MULTIPLE)
+        self.tree2 = tk.Listbox(frame4, selectmode=tk.MULTIPLE)
 
-		# Insert All the headers to the right tree
-		for dis in self.display:
-			self.tree1.insert(END, dis)
+        # Insert All the headers to the right tree
+        for dis in self.display:
+            self.tree1.insert(END, dis)
 
-		for hid in self.hide:
-			self.tree2.insert(END, hid)
+        for hid in self.hide:
+            self.tree2.insert(END, hid)
 
-		button1 = tkinter.ttk.Button(self, text="<- Move Selected ->", command=self.move_table)
+        button1 = tkinter.ttk.Button(self, text="<- Move Selected ->", command=self.move_table)
 
-		# Pack it all
-		button1.pack(padx=10, fill="x", side=tk.BOTTOM)
-		tkinter.ttk.Label(frame, text='Display Columns').pack(side=tk.TOP)
-		tkinter.ttk.Label(frame2, text='Hide Columns').pack(side=tk.TOP)
-		frame3.pack(fill=tk.BOTH)
-		frame4.pack(fill=tk.BOTH)
-		scrollbar = Scrollbar(frame3, orient="vertical")
-		scrollbar.config(command=self.tree1.yview)
-		scrollbar.pack(side=tk.RIGHT, fill="y")
-		self.tree1.config(yscrollcommand=scrollbar.set)
-		scrollbar = Scrollbar(frame4, orient="vertical")
-		scrollbar.config(command=self.tree2.yview)
-		scrollbar.pack(side=tk.RIGHT, fill="y")
-		self.tree2.config(yscrollcommand=scrollbar.set)
-		self.tree1.pack(side=tk.BOTTOM)
-		self.tree2.pack(side=tk.BOTTOM)
-		frame.pack(side=tk.LEFT)
-		frame2.pack(side=tk.RIGHT)
+        # Pack it all
+        button1.pack(padx=10, fill="x", side=tk.BOTTOM)
+        tkinter.ttk.Label(frame, text='Display Columns').pack(side=tk.TOP)
+        tkinter.ttk.Label(frame2, text='Hide Columns').pack(side=tk.TOP)
+        frame3.pack(fill=tk.BOTH)
+        frame4.pack(fill=tk.BOTH)
+        scrollbar = Scrollbar(frame3, orient="vertical")
+        scrollbar.config(command=self.tree1.yview)
+        scrollbar.pack(side=tk.RIGHT, fill="y")
+        self.tree1.config(yscrollcommand=scrollbar.set)
+        scrollbar = Scrollbar(frame4, orient="vertical")
+        scrollbar.config(command=self.tree2.yview)
+        scrollbar.pack(side=tk.RIGHT, fill="y")
+        self.tree2.config(yscrollcommand=scrollbar.set)
+        self.tree1.pack(side=tk.BOTTOM)
+        self.tree2.pack(side=tk.BOTTOM)
+        frame.pack(side=tk.LEFT)
+        frame2.pack(side=tk.RIGHT)
 
-	def update_table(self, event=None):
-		'''
-		Call the self.func to update the table.
-		:param event: None
-		:return: None
-		'''
-		self.func(None, self.tree1.get(0, END))
+    def update_table(self, event=None):
+        '''
+        Call the self.func to update the table.
+        :param event: None
+        :return: None
+        '''
+        self.func(None, self.tree1.get(0, END))
 
-	def move_table(self, event=None):
-		'''
-		Move item from one table to another.
-		:param event: None
-		:return: None
-		'''
-		for select in self.tree1.curselection():
-			item_text = self.tree1.get(select)
-			self.tree2.insert(END, item_text)
-		for select in self.tree1.curselection()[::-1]:
-			self.tree1.delete(select)
+    def move_table(self, event=None):
+        '''
+        Move item from one table to another.
+        :param event: None
+        :return: None
+        '''
+        for select in self.tree1.curselection():
+            item_text = self.tree1.get(select)
+            self.tree2.insert(END, item_text)
+        for select in self.tree1.curselection()[::-1]:
+            self.tree1.delete(select)
 
-		for select in self.tree2.curselection():
-			item_text = self.tree2.get(select)
-			self.tree1.insert(END, item_text)
-		for select in self.tree2.curselection()[::-1]:
-			self.tree2.delete(select)
+        for select in self.tree2.curselection():
+            item_text = self.tree2.get(select)
+            self.tree1.insert(END, item_text)
+        for select in self.tree2.curselection()[::-1]:
+            self.tree2.delete(select)
 
-		self.update_table()
+        self.update_table()
 
 class TreeTable(Frame):
-	'''
-	treeview like with much more functionality (look like .Net treeview)
-	'''
-	def __init__(self, master, headers, data, name=None, text_by_item=0, resize=False, display=None, disable_header_replace=600 ,folder_by_item=None, folder_text="?/?", text_popup=True, resizeable=True, global_preference='TreeTable_CULUMNS'):
-		"""
-		master: where to put the treetable.
-		header: the columns headers.
-		data: the data to put inside.
-		text_by_item: the text header of every line (the index in the data in every line).
-		resize: True to resize(when the table created or items added).
-		display: gets a tuple of all the items to display(from the headers) and display them as default.
-		disable_header_replace: sometime we want to disable header (because its slow), so we can give a number of rows or just true. [cant be disable on foldered tree]
-		folder_by_item and folder_item used for create a treetable that have foldered some items.n
-		folder_by_item: get the item to be the search for the folder_text in the data specific line.
-		folder_text: will be the text in the item index to split the items with and go inside the folder tree.
-		text_popup: True to enable popup for text when mouse in on some item.
-		resizeable: True to resize the table automaticly.
-		global_preference: the name for the global variable to put user preference (False/None to disable).
-		"""
-		Frame.__init__(self, master, name=name)
-
-		# Init Class Variables
-		self.master = master
-		self.resize = resize
-		self.text_popup = text_popup
-		self.text_by_item = text_by_item
-		self.disable_header_replace = disable_header_replace
-		self.row_search = ('', 0)
-		self.last_seperator_time = 0
-		self.swapped = False
-		self.current_x = 0
-		self.headers = headers
-		self.data = data
-		self.folder_by_item = folder_by_item
-		self.folder_text = folder_text
-		self.app_header = None
-
-		# Check if the user put a limit to the header replace (default is 600).
-		if disable_header_replace:
-			try:
-				disable_header_replace = int(disable_header_replace)
-				self.disable_header_replace = len(data) > disable_header_replace
-			except (TypeError, ValueError):
-				self.disable_header_replace = True
-
-		#: :class:`~ttk.Treeview` that only shows "headings" not "tree columns"
-		# if the folder_by_item is not null we will go and create a treeview with tree, and seperate them (go deep when folder_text found).
-		# for example (('item', 'abc', 'abcd'), ('?/?item2', 'abc', 'abcd'), ('?/?item3', 'abc', 'abcd'), ('?/??/?item4', 'abc', 'abcde'), ('item5', 'abc', 'abcdf'))
-		# will create the following tree:
-		# | header1 | header2 | header3 |
-		# -------------------------------
-		# | item1   | abc     | abcd    |
-		# | -item2  | abc     | abcd    | item2 will be sub item of item 1
-		# | -item3  | abc     | abcd    | item3 will be sub item of item 1 as well
-		# | --item4 | abc     | abcde   | item4 will be sub item of item 3
-		# | item5   | abc     | abcdf   | item5 dont have any ?/? so he will not be sub item
-		if self.folder_by_item != None:
-			self.tree = Treeview(self, columns=self.headers, name='tabletree')
-			self.tree.heading("#0", text="{} [Total:{}]".format(self.headers[self.folder_by_item], len(data)))
-			self.tree["displaycolumns"] = self.headers[:folder_by_item]+self.headers[folder_by_item+1:]
-			self.visual_drag = Treeview(self, columns=self.headers, name='visual_drag', show="headings")
-			self.visual_drag["displaycolumns"] = self.headers[:folder_by_item] + self.headers[folder_by_item + 1:]
-		else:
-			self.tree = Treeview(self, columns=self.headers, name='tabletree', show="headings")
-			self.visual_drag = Treeview(self, columns=self.headers, name='visual_drag', show="headings")
-
-		# Save the user preference for the display columns (this will override the display if its enable).
-		if global_preference:
-			if global_preference not in globals():
-				globals()[global_preference] = {}
-
-		self.global_preference = global_preference
-
-		self.display = display if display else self.headers
-		self.display = globals()[self.global_preference][str(self.headers)] if str(self.headers) in globals()[self.global_preference] else self.display
-		self.tree["displaycolumns"] = self.display
-		self.visual_drag["displaycolumns"] = self.display
-
-		#: vertical scrollbar
-		self.yscroll = Scrollbar(self, orient="vertical",
-								 command=self.tree.yview, name='table_yscroll')
-		#: horizontal scrollbar
-		self.xscroll = Scrollbar(self, orient="horizontal",
-								 command=self.tree.xview, name='table_xscroll')
-		self.tree['yscrollcommand'] = self.yscroll.set  # bind to scrollbars
-		self.tree['xscrollcommand'] = self.xscroll.set
-
-		# position widgets and set resize behavior.
-		self.tree.grid(column=0, row=0, sticky=(N + E + W + S))
-		self.yscroll.grid(column=1, row=0, sticky=(N + S))
-		self.xscroll.grid(column=0, row=1, sticky=(E + W))
-		self.grid_columnconfigure(0, weight=1)
-		self.grid_rowconfigure(0, weight=1)
-
-		# Insert all the items and init the title row callbacks (for filtering).
-		self._init_title_row_callback()
-		self._init_insert_items()
-		if len(self.tree.get_children()) > 0:
-			self.tree.focus(self.tree.get_children()[0])
-
-		# Set original order to the items (so ctrl+t will restore to default).
-		self.original_order = self.get_all_children(self.tree)
-		#self.original_order = sorted(self.original_order, key=lambda x: int(str(x[1][0] if isinstance(x[1], tuple) else x[0])[1:], 16))
-
-		# Menu creation.
-		self.aMenu = Menu(master, tearoff=0)
-		self.HeaderMenu = Menu(master, tearoff=0)
-		self.HeaderMenu.add_command(label='Select Columns...', command=self.header_selected)
-		self.HeaderMenu.add_command(label='Default Columns', command=self.display_only)
-		self.HeaderMenu.add_separator()
-		self.HeaderMenu.add_command(label='Hide Column', command=self.hide_selected_col)
-		self.HeaderMenu.add_separator()
-		if has_csv:
-			self.HeaderMenu.add_command(label='Export Table To Csv', command=self.export_table_csv)
-			self.HeaderMenu.add_separator()
-		if resizeable:
-			self.HeaderMenu.add_command(label='Resize Column', command=self.resize_selected_col)
-			self.HeaderMenu.add_command(label='Resize All Columns', command=self.resize_all_columns)
-		self.copy_menu = Menu(self.aMenu)
-
-		for header in range(len(self.headers)):
-			self.copy_menu.add_command(label='{}'.format(self.headers[header]), command=functools.partial(self.RunCopy, header))
-		self.aMenu.add_cascade(label='Copy', menu=self.copy_menu)
-
-		"""Write Menu (may support in the future..)
-		self.write_menu = Menu(self.aMenu)
-		for header in range(len(self.headers)):
-			self.write_menu.add_command(label='{}'.format(self.headers[header]), command=functools.partial(self.RunWrite, header))
-		self.aMenu.add_cascade(label='Write', menu=self.write_menu)
-		"""
-
-		# Binding keys.
-		self.tree.bind('<KeyPress>', self.allKeyboardEvent if self.folder_by_item is None else self.allKeyboardEventTree)
-		self.tree.bind("<Double-1>", self.OnDoubleClick)
-		self.tree.bind(right_click_event, self.popup)
-		self.tree.bind('<Control-c>', self.header_selected)
-		self.tree.bind('<Control-C>', self.header_selected)
-		self.tree.bind('<Control-t>', self.show_original_order)
-		self.tree.bind('<Control-T>', self.show_original_order)
-
-		# header press and release (if disable header replace is disable we still enable them but without the animation).
-		self.tree.bind("<ButtonPress-1>", self.bDown)
-		self.tree.bind("<ButtonRelease-1>", self.bUp)
-		self.tree.bind('<Motion>', self.OnMotion)
-
-		# This binding relevent only if there is virtual drag
-		if not self.disable_header_replace:
-			self.tree.bind("<<TreeviewOpen>>", self.open_virtual_tree)
-			self.tree.bind("<<TreeviewClose>>", self.close_virtual_tree)
-			self.tree.bind("<<TreeviewSelect>>", self.set_item)
-
-	def _init_insert_items(self):
-		'''
-		This function insert item to the table (wheter is a regular table or a treetable).
-		:return: None
-		'''
-
-		# check if this is folder tree (To make if faster there is big if on the top instead of inside, what makes this kind of duplicated code)
-		if self.folder_by_item !=None:
-
-			# Parent dics for the tree
-			self.parents_dict = {}
-
-			# the iteretion with resize
-			if self.resize:
-
-				# If the user want the header replace drag and drop support.
-				if not self.disable_header_replace:
-
-					self.v_parents_dict = {}
-
-					# Go all over the data.
-					for item in self.data:
-						item = [str(c_item).replace('{', r'\{').encode('utf-8',errors='ignore').decode('utf-8', errors='ignore') for c_item in item]
-						c_tag = re.sub('[^\S0-9a-zA-Z]', '_', item[self.text_by_item])
-						foldered = item[self.folder_by_item].count(self.folder_text)
-						item[self.folder_by_item] = item[self.folder_by_item].replace(self.folder_text, "")
-
-						# If this item sun of no one.
-						if not foldered or foldered-1 not in self.parents_dict:
-							self.parents_dict[foldered] = self.tree.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-							self.v_parents_dict[foldered] = self.visual_drag.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-						else:
-							self.parents_dict[foldered] = self.tree.insert(self.parents_dict[foldered-1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-							self.v_parents_dict[foldered] = self.visual_drag.insert(self.v_parents_dict[foldered - 1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-
-						# adjust column's width if necessary to fit each value
-						for idx, val in enumerate(item):
-							col_width = tkinter.font.Font().measure(val)
-							# option can be specified at least 3 ways: as (a) width=None,
-							# (b) option='width' or (c) 'width', where 'width' can be any
-							# valid column option.
-							if self.tree.column(self.headers[idx], 'width') < col_width:
-								self.tree.column(self.headers[idx], width=col_width)
-								self.visual_drag.column(self.headers[idx], width=col_width)
-				else:
-					# Go all over the data.
-					for item in self.data:
-						item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
-						c_tag = re.sub('[^\S0-9a-zA-Z]', '_', item[self.text_by_item])
-						foldered = item[self.folder_by_item].count(self.folder_text)
-						item[self.folder_by_item] = item[self.folder_by_item].replace(self.folder_text, "")
-
-						# If this item sun of no one.
-						if not foldered or foldered-1 not in self.parents_dict:
-							self.parents_dict[foldered] = self.tree.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-						else:
-							self.parents_dict[foldered] = self.tree.insert(self.parents_dict[foldered - 1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-
-						# adjust column's width if necessary to fit each value
-						for idx, val in enumerate(item):
-							col_width = tkinter.font.Font().measure(val)
-							# option can be specified at least 3 ways: as (a) width=None,
-							# (b) option='width' or (c) 'width', where 'width' can be any
-							# valid column option.
-							if self.tree.column(self.headers[idx], 'width') < col_width:
-								self.tree.column(self.headers[idx], width=col_width)
-
-			# No resize.
-			else:
-
-				# If the user want the header replace drag and drop support.
-				if not self.disable_header_replace:
-
-					self.v_parents_dict = {}
-
-					# Go all over the data and insert the items.
-					for item in self.data:
-						item = [str(c_item).replace('{', r'\{').encode('utf-8',errors='ignore').decode('utf-8', errors='ignore') for c_item in item]
-						c_tag = re.sub('[^\S0-9a-zA-Z]', '_', item[self.text_by_item])
-						foldered = item[self.folder_by_item].count(self.folder_text)
-						item[self.folder_by_item] = item[self.folder_by_item].replace(self.folder_text, "")
-
-						# If this item sun of no one.
-						if not foldered:
-							self.parents_dict[foldered] = self.tree.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-							self.v_parents_dict[foldered] = self.visual_drag.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-						elif foldered-1 in self.parents_dict:
-							self.parents_dict[foldered] = self.tree.insert(self.parents_dict[foldered-1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-							self.v_parents_dict[foldered] = self.visual_drag.insert(self.v_parents_dict[foldered - 1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-				else:
-
-					# Go all over the data and insert the item.s
-					for item in self.data:
-						item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
-						c_tag = re.sub('[^\S0-9a-zA-Z]', '_', item[self.text_by_item])
-						foldered = item[self.folder_by_item].count(self.folder_text)
-						item[self.folder_by_item] = item[self.folder_by_item].replace(self.folder_text, "")
-
-						# If this item sun of no one.
-						if not foldered:
-							self.parents_dict[foldered] = self.tree.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-						elif foldered - 1 in self.parents_dict:
-							self.parents_dict[foldered] = self.tree.insert(self.parents_dict[foldered - 1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
-
-		# No headers table.
-		else:
-			self.insert_items(self.data)
-
-	def _init_title_row_callback(self):
-		# build tree
-		for col in self.headers:
-			# NOTE: Use col as column identifiers, crafty!
-			# NOTE: Also change col to title case using str.title()
-			# NOTE: make lambda behave nicely in a loop using default arg!
-			callback = lambda c=col: self.sortby(c, False)
-			self.tree.heading(col, text=col.title(), command=callback)
-			self.visual_drag.heading(col, text=col.title())#, command=callback)
-			# adjust the column's width to the header string
-			self.tree.column(col, width=tkinter.font.Font().measure(col.title()))
-			self.visual_drag.column(col, width=tkinter.font.Font().measure(col.title()))
-
-	def insert_items(self, data):
-		'''
-		This function insert the data to the table
-		wrap insert with try except to speedup preformance.
-		:param data: list of tuples (the items to insert)
-		:return: None
-		'''
-		# If resize is enable
-		if self.resize:
-
-			# Create with visual_drag (for drag and drop support on headers).
-			if not self.disable_header_replace:
-				# Go all over the data and insert the items
-				for item in data:
-
-					# Add try except to improve performance
-					try:
-						c_tag = str(item[self.text_by_item])
-						self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-						self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-					except (Exception, tk.TclError):
-
-						# This will fail as well (so both table will be in the same item count)
-						try:
-							self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-						except (Exception, tk.TclError) as ex:
-							pass
-
-						try:
-							item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
-							c_tag = re.sub('[^\S0-9a-zA-Z]', '_', str(item[self.text_by_item]))
-							self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-							self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-						except tk.TclError:
-							print('[-] Fail to insert {} to the table'.format(item))
-							try:
-								self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-							except tk.TclError:
-								pass
-
-					# adjust column's width if necessary to fit each value
-					for idx, val in enumerate(item):
-						col_width = tkinter.font.Font().measure(val)
-						# option can be specified at least 3 ways: as (a) width=None,
-						# (b) option='width' or (c) 'width', where 'width' can be any
-						# valid column option.
-						if self.tree.column(self.headers[idx], 'width') < col_width:
-							self.tree.column(self.headers[idx], width=col_width)
-							self.visual_drag.column(self.headers[idx], width=col_width)
-
-			# there is no visual_drag
-			else:
-				# Go all over the data and insert the items
-				for item in data:
-
-					# Add try except to improve performance
-					try:
-						c_tag = str(item[self.text_by_item])
-						self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-					except (Exception, tk.TclError):
-
-						try:
-							item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
-							c_tag = re.sub('[^\S0-9a-zA-Z{}]', '_', str(item[self.text_by_item]))
-							self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-						except tk.TclError:
-							print('[-] Fail to insert {} to the table'.format(item))
-
-					# adjust column's width if necessary to fit each value
-					for idx, val in enumerate(item):
-						col_width = tkinter.font.Font().measure(val)
-						# option can be specified at least 3 ways: as (a) width=None,
-						# (b) option='width' or (c) 'width', where 'width' can be any
-						# valid column option.
-						if self.tree.column(self.headers[idx], 'width') < col_width:
-							self.tree.column(self.headers[idx], width=col_width)
-
-		# If resize is disable.
-		else:
-
-			# Create with visual_drag (for drag and drop support on headers).
-			if not self.disable_header_replace:
-
-				# Go all over the data and insert the items
-				for item in data:
-
-					# Add try except to improve performance
-					try:
-						c_tag = str(item[self.text_by_item])
-						self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-						self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-					except (Exception, tk.TclError):
-
-						# This will fail as well (so both table will be in the same item count)
-						try:
-							self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-						except (Exception, tk.TclError) as ex:
-							pass
-
-						try:
-							item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
-							c_tag = re.sub('[^\S0-9a-zA-Z]', '_', str(item[self.text_by_item]))
-							self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-							self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-						except tk.TclError:
-							print('[-] Fail to insert {} to the table'.format(item))
-							try:
-								self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-							except tk.TclError:
-								pass
-			else:
-
-				# Go all over the data and insert the items
-				for item in data:
-
-					# Add try except to improve performance
-					try:
-						c_tag = str(item[self.text_by_item])
-						self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-					except (Exception, tk.TclError):
-						try:
-							item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
-							c_tag = re.sub('[^\S0-9a-zA-Z{}]', '_', str(item[self.text_by_item]))
-							self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-						except tk.TclError:
-							print('[-] Fail to insert {} to the table'.format(item))
-
-		if len(self.tree.get_children()) > 0:
-			self.tree.focus(self.tree.get_children()[0])
-
-		# Set original order to the items (so ctrl+t will restore to default).
-		if self.resize:
-			self.original_order = self.get_all_children(self.tree)
-		self.data += data
-
-	def get_all_children(self, tree, item="", only_opened=True):
-		'''
-		This function will return a list of all the children.
-		:param tree: tree to iterate.
-		:param item: from item
-		:param only_opened: go only over the items that nop colaps.
-		:return: list of all the items [(item, parent), (item, parent)]
-		'''
-		open_opt = tk.BooleanVar()
-		children = []
-
-		# Go all over the childrens
-		for child in tree.get_children(item):
-
-			# Append children and parent
-			children.append((child, item))
-			open_opt.set(str(tree.item(child, option='open')))
-
-			# If only opened items is searched
-			if open_opt.get() or not only_opened:
-				children += self.get_all_children(tree, child, only_opened)
-		return children
-
-	def allKeyboardEvent(self, event):
-		'''
-		This function go to the item that start with the key pressed by the user (or word), this function search for the current first columns
-		if column is moved its will update to the new first column.
-		:param event: event
-		:return: None
-		'''
-
-		# Check for valid key
-		if event.keysym_num > 0 and event.keysym_num < 60000:
-
-			# Check if there is any item selected (else select the first one).
-			if len(self.tree.selection()) > 0:
-				item = self.tree.selection()[0]
-			else:
-				item = self.tree.get_children('')[0]
-			clicked_item = item
-
-			# A timer (for types a words and not just a char.
-			if time.time() - self.row_search[1] > 2:
-				self.row_search = ('', self.row_search[1])
-
-			# Check for the same character twice in a row.
-			if len(self.row_search[0]) == 1 and self.row_search[0][0] == event.char.lower():
-				self.row_search = (self.row_search[0][0], time.time())
-			else:
-				self.row_search = ('{}{}'.format(self.row_search[0], event.char.lower()), self.row_search[1])
-			after_selected = False
-
-			# Check all the rows after the current selection.
-			for ht_row in self.tree.get_children():
-				if clicked_item == ht_row:
-					after_selected = True
-					if time.time() - self.row_search[1] > 2 or len(self.row_search[0]) == 1:
-						continue
-				if not after_selected:
-					continue
-				if (self.tree["displaycolumns"][0] != '#all' and str(self.tree.item(ht_row)['values'][self.headers.index(self.tree["displaycolumns"][0])]).lower().startswith(self.row_search[0])) or str(self.tree.item(ht_row)['values'][self.text_by_item]).lower().startswith(self.row_search[0]):
-					self.tree.focus(ht_row)
-					self.tree.selection_set(ht_row)
-					self.tree.see(ht_row)
-					self.row_search = (self.row_search[0], time.time())
-					return
-
-			# Check all the rows before the current selection.
-			for ht_row in self.tree.get_children():
-				if clicked_item == ht_row:
-					break
-				if (self.tree["displaycolumns"][0] != '#all' and str(self.tree.item(ht_row)['values'][self.headers.index(self.tree["displaycolumns"][0])]).lower().startswith(self.row_search[0])) or str(self.tree.item(ht_row)['values'][self.text_by_item]).lower().startswith(self.row_search[0]):
-					self.tree.focus(ht_row)
-					self.tree.selection_set(ht_row)
-					self.tree.see(ht_row)
-					self.row_search = (self.row_search[0], time.time())
-					return
-
-			self.bell()
-			self.row_search = ('', 0)
-
-	def allKeyboardEventTree(self, event):
-		'''
-		This function go to the item that start with the key pressed by the user (or word), this function search for the first only!
-		:param event: event
-		:return: None
-		'''
-
-		# Check for valid key
-		if event.keysym_num > 0 and event.keysym_num < 60000:
-			if len(self.tree.selection()) > 0:
-				item = self.tree.selection()[0]
-			else:
-				item = self.tree.get_children('')[0]
-			clicked_item = item
-			if time.time() - self.row_search[1] > 2:
-				self.row_search = ('', self.row_search[1])
-
-			# Check for the same character twice in a row.
-			if len(self.row_search[0]) == 1 and self.row_search[0][0] == event.char.lower():
-				self.row_search = (self.row_search[0][0], time.time())
-			else:
-				self.row_search = ('{}{}'.format(self.row_search[0], event.char.lower()), self.row_search[1])
-			after_selected = False
-
-			childrens = self.get_all_children(self.tree)
-
-			# Check all the rows after the current selection.
-			for ht_row in childrens:
-				ht_row = ht_row[0]
-				if clicked_item == ht_row:
-					after_selected = True
-					if time.time() - self.row_search[1] > 2 or len(self.row_search[0]) == 1:
-						continue
-				if not after_selected:
-					continue
-				if str(self.tree.item(ht_row)['text']).replace(' ','').lower().startswith(self.row_search[0]):
-					self.tree.focus(ht_row)
-					self.tree.selection_set(ht_row)
-					self.tree.see(ht_row)
-					self.row_search = (self.row_search[0], time.time())
-					return
-
-			# Check all the rows before the current selection.
-			for ht_row in childrens:
-				ht_row = ht_row[0]
-				if clicked_item == ht_row:
-					break
-				if str(self.tree.item(ht_row)['text']).replace(' ','').lower().startswith(self.row_search[0]):
-					self.tree.focus(ht_row)
-					self.tree.selection_set(ht_row)
-					self.tree.see(ht_row)
-					self.row_search = (self.row_search[0], time.time())
-					return
-
-			self.bell()
-			self.row_search = ('', 0)
-
-	def RunCopy(self, cp):
-		'''
-		Copy the item selected to the clipboard.
-		'''
-		clip = self.tree
-		row = self.tree.selection()[0]
-		item = self.tree.item(row)
-		clip.clipboard_clear()
-		item_text = item['values'][cp]
-		clip.clipboard_append(str(item_text))
-
-	def OnMotion(self, event):
-		"""
-		This function handle mouse motion event, on headers moves by the user (drag and drop support). and the tooltip help.
-		:param event:
-		:return:
-		"""
-
-		# Handle Motion on dnd column.
-		tv = event.widget
-
-		# drag around label if visible
-		if self.visual_drag.winfo_ismapped():
-			self.swapped = True
-			self.last_x = float(self.current_x)
-			self.current_x = float(event.x)
-			x = self.dx + event.x
-
-			# middle of the dragged column.
-			xm = int(x + self.visual_drag.column(self.col_from_id, 'width') // 2)
-			self.visual_drag.place_configure(x=x)
-			col = tv.identify_column(xm)
-
-			# if the middle of the dragged column is in another column, swap them
-			if col and tv.column(col, 'id') != self.col_from_id:
-				self.swap(tv, self.col_from_id, col, 'right' if self.current_x - self.last_x > 0 else 'left')
-
-		# Handle tooltip creation
-		if self.text_popup:
-
-			# Problem with tk version (just update the version).
-			try:
-
-				# Create small square with information
-				_iid = self.tree.identify_row(event.y)
-
-				# If hold on table header
-				if not _iid or not self.tree.identify_column(event.x)[1:]:
-					return
-
-				item = self.tree.item(_iid)
-			except tk.TclError:
-				return
-
-			# Hide the current tooltip (if there is any).
-			if hasattr(self, "toolTop"):
-				self.toolTop.hidetip()
-
-			# Create a tooltip.
-			self.toolTop = TreeToolTip(self.tree, event)
-
-			# Find the selected column
-			col = int(self.tree.identify_column(event.x)[1:]) -1 if int(self.tree.identify_column(event.x)[1:]) else 0
-			text_to_show = ""
-
-			# Make sure to add to the foldered tree's the realy first column info as well so they have more information displayed in the tooltip.
-			if self.folder_by_item != None:
-				text_to_show = "{}: {}\n".format(self.headers[self.folder_by_item], self.tree.item(_iid)['values'][self.folder_by_item])
-
-			# Get the selected column (acourding to the current display).
-			display = self.tree["displaycolumns"]
-			text_to_show += "{}: {}".format(self.headers[self.text_by_item], self.tree.item(_iid)['values'][self.text_by_item])
-
-
-			# If we not on motion on text_by_item column(witch already displayed...).
-			if self.headers[self.text_by_item] not in display or col != display.index(self.headers[self.text_by_item]):
-				text_to_show += "\n{}: {}".format(display[col], item['values'][self.headers.index(display[col])] if len(item['values']) > self.headers.index(display[col]) else '')
-			self.toolTop.showtip(text_to_show)
-
-
-			def leave(event):
-				''' hide the diplayed tooltip '''
-				self.toolTop.hidetip()
-			self.tree.bind('<Leave>', leave)
-
-	def swap(self, tv, col1, col2, direction):
-		'''
-		This function swap 2 columns
-		:param tv: treeview
-		:param col1: col
-		:param col2: col
-		:param direction: direction
-		:return: None
-		'''
-		dcols = list(tv["displaycolumns"])
-
-		# When all the columsn is selected we get #all instead of tuples with the names of the row, so lets replace this.
-		if dcols[0] == "#all":
-			dcols = list(tv["columns"])
-
-		# Get the columns id
-		id1 = self.tree.column(col1, 'id')
-		id2 = self.tree.column(col2, 'id')
-
-		# Return if one of the columns is not valid (the header column for the folder table).
-		if id1 == '' or id2 == '':
-			return
-
-		# Get the index of the ids.
-		i1 = dcols.index(id1)
-		i2 = dcols.index(id2)
-
-		# Return if the columns is not valid (before the first or after the last).
-		if (i1 - i2 > 0 and direction == 'right') or (i1 - i2 < 0 and direction == 'left'):
-			return
-
-		# Swap.
-		dcols[i1] = id2
-		dcols[i2] = id1
-
-		# Display in the new order.
-		tv["displaycolumns"] = dcols
-		self.swapped = True
-
-	def bDown(self, event):
-		'''
-		This function handle button down event (when we try replace 2 columns).
-		:param event:
-		:return:
-		'''
-		tv = tree = event.widget
-		left_column = tree.identify_column(event.x)
-
-		# Check if this columns is valid (not the header for folder).
-		if left_column[1:] == '':
-			return
-
-		right_column = '#%i' % (int(tree.identify_column(event.x)[1:]) + 1)
-
-		# Get the left index
-		if (not isinstance(left_column, int)) and (not left_column.isdigit()) and (
-				left_column.startswith('I') or left_column.startswith('#')):
-			left_column = int(left_column[1:])
-		left_column -= 1
-
-		# This is the text header of the treeview(the left column if text header present).
-		if left_column != -1:
-			left_column = self.headers.index(self.tree["displaycolumns"][left_column])
-			width_l = tree.column(left_column, 'width')
-			self.visual_drag.column(left_column, width=width_l)
-
-		# Get the right column
-		if (not isinstance(right_column, int)) and (not right_column.isdigit()) and (
-				right_column.startswith('I') or right_column.startswith('#')):
-			right_column = int(right_column[1:])
-		right_column -= 1
-
-		# This is the text header of the treeview(the left column if text header present).
-		if right_column < len(self.tree["displaycolumns"]):
-			right_column = self.headers.index(self.tree["displaycolumns"][right_column])
-			width_r = tree.column(right_column, 'width')
-			self.visual_drag.column(right_column, width=width_r)
-
-		# Problem with tk version minumum support 8.5.
-		try:
-			c_region = tv.identify_region(event.x, event.y)
-		except tk.TclError:
-			c_region = 'heading' if event.y < 26 else 'not good tk version'
-
-		# Check the user select the header of the table.
-		if c_region == 'heading':
-			self.swapped = False
-			col = tv.identify_column(event.x)
-			self.col_from_id = tv.column(col, 'id')
-
-			# Iterate all the treeview only if we have not disable header replace.
-
-
-			# get column x coordinate and width
-			if self.col_from_id and self.col_from_id != 0:
-				all_children = tv.get_children() #self.get_all_children(tv)
-				for i in all_children:
-					bbox = tv.bbox(i, self.col_from_id) #bbox = tv.bbox(i[1][0] if isinstance(i[1], tuple) else i[0], self.col_from_id)
-					if bbox:
-						self.dx = bbox[0] - event.x  # distance between cursor and column left border
-						#        tv.heading(col_from_id, text='')
-						def set_y(*args):
-							self.visual_drag.yview_moveto(self.yscroll.get()[0])
-
-						def set_y2(event):
-							shift = (event.state & 0x1) != 0
-							scroll = -1 if event.delta > 0 else 1
-							if shift:
-								self.visual_drag.xview_scroll(scroll, "units")
-							else:
-								self.visual_drag.yview_scroll(scroll, "units")
-
-						# Check if we display beautiful header or not
-						if not self.disable_header_replace:
-							self.visual_drag.configure(displaycolumns=[self.col_from_id], yscrollcommand=set_y)
-							self.tree.bind("<MouseWheel>", set_y2)
-							self.visual_drag.place(in_=tv, x=bbox[0], y=0, anchor='nw', width=bbox[2], relheight=1)
-							self.visual_drag.selection_set(tv.selection())
-							self.visual_drag.yview_moveto(self.yscroll.get()[0])
-						else:
-							self.visual_drag.configure(displaycolumns=[self.col_from_id])
-							self.visual_drag.place(in_=tv, x=event.x, y=0, anchor='nw', width=bbox[2], relheight=1)
-						return
-
-		else:
-			self.col_from_id = None
-
-			# Reset the timer (if we select seperator).
-			if c_region == 'separator':
-				self.last_seperator_time = time.time()
-
-	def bUp(self, event):
-		''' This function hide the visual drage when the courser is up'''
-		self.visual_drag.place_forget()
-
-	def open_virtual_tree(self, event):
-		''' This function open the visual_drag when the regulare tree is open'''
-		if len(self.tree.selection()) > 0:
-			self.visual_drag.item(self.tree.selection()[0], open=1)
-
-	def close_virtual_tree(self, event):
-		''' This function close the visual_drag when the regulare tree is close'''
-		if len(self.tree.selection()) > 0:
-			self.visual_drag.item(self.tree.selection()[0], open=0)
-
-	def set_item(self, event):
-		''' This function set the selection item in te visual_drag when the regulare tree is selection is change'''
-		if len(self.tree.selection()) > 0:
-			item = self.tree.selection()[0]
-			self.visual_drag.selection_set(item)
-			self.tree.focus(item)
-			self.tree.see(item)
-
-	def OnDoubleClick(self, event):
-		''' This function handle double click press (for header resize)'''
-		# Double click on table header to resize
-		if event and event.y < 25 and event.y > 0:
-			try:
-				if self.tree.identify_region(event.x, event.y) == 'separator':
-					self.resize_col(self.tree.identify_column(event.x))
-			except tk.TclError:
-				pass # This Tkinter version dont support identify region event.
-
-	def resize_col(self, col):
-		'''
-		This function resize some collumn.
-		:param col: the col to resize (fix size).
-		:return: None
-		'''
-		if (not isinstance(col, int)) and (not col.isdigit()) and (col.startswith('I') or col.startswith('#')):
-			col = int(col[1:])
-		col -= 1#col-1 if col!=0 else 0
-
-		# This is the text header of the treeview(the left column if text header present).
-		if col == -1:
-			return
-		col = self.headers.index(self.tree["displaycolumns"][col])
-		max_len = 0
-
-		# Get the beggest line and resize
-		for row in self.get_all_children(self.tree):
-			row = row[0]
-			item = self.tree.item(row)
-			current_len = tkinter.font.Font().measure(str(item['values'][col]))
-			if current_len > max_len:
-				max_len = current_len
-		self.tree.column(self.headers[col], width=(max_len))
-
-		if not self.disable_header_replace:
-			self.visual_drag.column(self.headers[col], width=(max_len))
-
-	def display_only(self, event=None, display=None):
-		''' This function display only the wanted items (and save them)'''
-		self.tree["displaycolumns"] = display if display else self.display
-
-		if not self.disable_header_replace:
-			self.visual_drag["displaycolumns"] = display if display else self.display
-
-		if self.global_preference and display:
-			globals()[self.global_preference][str(self.headers)] = display
-
-	def header_selected(self,event=None):
-		''' This function display the move list for header selected '''
-
-		def on_exit():
-			''' Delete the header app when he die and set to None'''
-			self.app_header.destroy()
-			self.app_header = None
-
-		# If the user select to display the select columns just pop it up (if its exist, else create it).
-		if self.app_header:
-			self.app_header.attributes('-topmost', 1)
-			self.app_header.attributes('-topmost', 0)
-		else:
-
-			# Get the current displayed columns.
-			display = self.tree["displaycolumns"]
-
-			# Get the current hiden columns
-			hide = [item for item in self.headers if item not in self.tree["displaycolumns"]]
-
-			# Remove the first header if this a folder treeview (unsupported).
-			if self.folder_by_item != None:
-				hide.remove(self.headers[self.folder_by_item])
-
-			# Create the movelists gui.
-			self.app_header = MoveLists(display, hide, self.display_only)
-			x = self.winfo_x()
-			y = self.winfo_y()
-			self.app_header.geometry("+%d+%d" % (x + ABS_X, y + ABS_Y))
-			self.app_header.resizable(False, False)
-			self.app_header.title("Select Columns")
-			self.app_header.protocol("WM_DELETE_WINDOW", on_exit)
-
-	def hide_selected_col(self):
-		''' This functio handle the hide column header menu function'''
-		display = list(self.tree["displaycolumns"])
-		col = self.tree.identify_column(self.HeaderMenu.c_event.x)
-		if (not isinstance(col, int)) and (not col.isdigit()) and (col.startswith('I') or col.startswith('#')):
-			col = int(col[1:])
-		col -= 1
-
-		# This is the text header of the treeview(the left column if text header present).
-		if col == -1:
-			return
-		col = self.tree["displaycolumns"][col]
-
-		display.remove(col)
-		self.display_only(None, display)
-
-	def resize_selected_col(self):
-		''' This function handle the resize column from the menu of the table header '''
-		self.resize_col(self.tree.identify_column(self.HeaderMenu.c_event.x))
-
-	def resize_all_columns(self):
-		''' This funtion resize all the columns (handle the resize all columns from the menu funciton).'''
-		for col in range(len(self.tree["displaycolumns"])+1):
-			self.resize_col(col)
-
-	def SetColorItem(self, color, item=None, tag=None):
-		'''
-		This function set a color to a specific item/tag.
-		:param color: the new color.
-		:param item: item name (optional)
-		:param tag: tag name (optional)
-		:return: None
-		'''
-
-		# Validate that the user give item/tag and set his color.
-		if item or tag:
-			tag = tag if tag else self.tree.item(item)['values'][self.text_by_item]
-			tag = str(tag).replace(' ', '_')
-			self.tree.tag_configure(tag, background=color)
-			if not self.disable_header_replace:
-				self.visual_drag.tag_configure(tag, background=color)
-
-	def export_table_csv(self):
-		''' Export the table to csv file '''
-		selected = tkinter.filedialog.asksaveasfilename(parent=self)
-		if selected and selected != '':
-			with open(selected, 'w') as fhandle:
-				csv_writer = csv.writer(fhandle)
-				csv_writer.writerow(self.headers)
-
-				# Export acording to if folder or not
-				if self.folder_by_item != None:
-					for row in self.data:
-						csv_writer.writerow(row[:self.folder_by_item] + [row[self.folder_by_item].replace(self.folder_text, '~')] + row[self.folder_by_item+1:])
-				else:
-					for row in self.data:
-						csv_writer.writerow(row)
-
-	def popup(self, event):
-		''' This function popup the right menu '''
-
-		# Stop swapping if the user moving some header.
-		if self.swapped:
-			self.bUp(event)
-
-		# If header selected:
-		if event.y < 25 and event.y > 0:
-			self.HeaderMenu.c_event = event
-			self.HeaderMenu.tk_popup(event.x_root, event.y_root)
-		else:
-
-			# Select the item and popup menu
-			self.tree.selection_set(self.tree.identify_row(event.y))
-			if not self.disable_header_replace:
-				self.visual_drag.selection_set(self.tree.identify_row(event.y))
-			self.aMenu.tk_popup(event.x_root, event.y_root)
-
-	def sortby(self, col, descending):
-		'''
-		This function sort column
-		:param col: column to sort
-		:param descending: order True-descending or false-ascending (saved and switch each time)
-		:return:
-		'''
-
-
-		# grab values to sort
-		if time.time() - self.last_seperator_time < 0.75 or self.swapped:
-			self.swapped = False
-			return
-		data = [(self.tree.set(child[0], col), child)
-				for child in self.get_all_children(self.tree)]
-
-		# now sort the data in place (try first to sort by hex value (int is good to) than by string)
-		try:
-			data = sorted(data, reverse=descending, key=lambda x: int(x[0], 16))
-		except (ValueError, TypeError):
-			data.sort(reverse=descending)
-
-		for idx, item in enumerate(data):
-			self.tree.move(item[1][0], '', idx)
-			if not self.disable_header_replace:
-				self.visual_drag.move(item[1][0], '', idx)
-
-		# switch the heading so it will sort in the opposite direction
-		callback = lambda: self.sortby(col, not descending)
-		self.tree.heading(col, command=callback)
-
-	def show_original_order(self, event=None):
-		''' This function show the original order of the tree (created order)'''
-		for idx, item in enumerate(self.original_order):
-			if isinstance(item[1], tuple):
-				item = item[1]
-			self.tree.move(item[0], item[1], idx)
-			self.visual_drag.move(item[0], item[1], idx)
+    '''
+    treeview like with much more functionality (look like .Net treeview)
+    '''
+    def __init__(self, master, headers, data, name=None, text_by_item=0, resize=False, display=None, disable_header_replace=600 ,folder_by_item=None, folder_text="?/?", text_popup=True, resizeable=True, global_preference='TreeTable_CULUMNS'):
+        """
+        master: where to put the treetable.
+        header: the columns headers.
+        data: the data to put inside.
+        text_by_item: the text header of every line (the index in the data in every line).
+        resize: True to resize(when the table created or items added).
+        display: gets a tuple of all the items to display(from the headers) and display them as default.
+        disable_header_replace: sometime we want to disable header (because its slow), so we can give a number of rows or just true. [cant be disable on foldered tree]
+        folder_by_item and folder_item used for create a treetable that have foldered some items.n
+        folder_by_item: get the item to be the search for the folder_text in the data specific line.
+        folder_text: will be the text in the item index to split the items with and go inside the folder tree.
+        text_popup: True to enable popup for text when mouse in on some item.
+        resizeable: True to resize the table automaticly.
+        global_preference: the name for the global variable to put user preference (False/None to disable).
+        """
+        Frame.__init__(self, master, name=name)
+
+        # Init Class Variables
+        self.master = master
+        self.resize = resize
+        self.text_popup = text_popup
+        self.text_by_item = text_by_item
+        self.disable_header_replace = disable_header_replace
+        self.row_search = ('', 0)
+        self.last_seperator_time = 0
+        self.swapped = False
+        self.current_x = 0
+        self.headers = headers
+        self.data = data
+        self.folder_by_item = folder_by_item
+        self.folder_text = folder_text
+        self.app_header = None
+
+        # Check if the user put a limit to the header replace (default is 600).
+        if disable_header_replace:
+            try:
+                disable_header_replace = int(disable_header_replace)
+                self.disable_header_replace = len(data) > disable_header_replace
+            except (TypeError, ValueError):
+                self.disable_header_replace = True
+
+        #: :class:`~ttk.Treeview` that only shows "headings" not "tree columns"
+        # if the folder_by_item is not null we will go and create a treeview with tree, and seperate them (go deep when folder_text found).
+        # for example (('item', 'abc', 'abcd'), ('?/?item2', 'abc', 'abcd'), ('?/?item3', 'abc', 'abcd'), ('?/??/?item4', 'abc', 'abcde'), ('item5', 'abc', 'abcdf'))
+        # will create the following tree:
+        # | header1 | header2 | header3 |
+        # -------------------------------
+        # | item1   | abc     | abcd    |
+        # | -item2  | abc     | abcd    | item2 will be sub item of item 1
+        # | -item3  | abc     | abcd    | item3 will be sub item of item 1 as well
+        # | --item4 | abc     | abcde   | item4 will be sub item of item 3
+        # | item5   | abc     | abcdf   | item5 dont have any ?/? so he will not be sub item
+        if self.folder_by_item != None:
+            self.tree = Treeview(self, columns=self.headers, name='tabletree')
+            self.tree.heading("#0", text="{} [Total:{}]".format(self.headers[self.folder_by_item], len(data)))
+            self.tree["displaycolumns"] = self.headers[:folder_by_item]+self.headers[folder_by_item+1:]
+            self.visual_drag = Treeview(self, columns=self.headers, name='visual_drag', show="headings")
+            self.visual_drag["displaycolumns"] = self.headers[:folder_by_item] + self.headers[folder_by_item + 1:]
+        else:
+            self.tree = Treeview(self, columns=self.headers, name='tabletree', show="headings")
+            self.visual_drag = Treeview(self, columns=self.headers, name='visual_drag', show="headings")
+
+        # Save the user preference for the display columns (this will override the display if its enable).
+        if global_preference:
+            if global_preference not in globals():
+                globals()[global_preference] = {}
+
+        self.global_preference = global_preference
+
+        self.display = display if display else self.headers
+        self.display = globals()[self.global_preference][str(self.headers)] if str(self.headers) in globals()[self.global_preference] else self.display
+        self.tree["displaycolumns"] = self.display
+        self.visual_drag["displaycolumns"] = self.display
+
+        #: vertical scrollbar
+        self.yscroll = Scrollbar(self, orient="vertical",
+                                 command=self.tree.yview, name='table_yscroll')
+        #: horizontal scrollbar
+        self.xscroll = Scrollbar(self, orient="horizontal",
+                                 command=self.tree.xview, name='table_xscroll')
+        self.tree['yscrollcommand'] = self.yscroll.set  # bind to scrollbars
+        self.tree['xscrollcommand'] = self.xscroll.set
+
+        # position widgets and set resize behavior.
+        self.tree.grid(column=0, row=0, sticky=(N + E + W + S))
+        self.yscroll.grid(column=1, row=0, sticky=(N + S))
+        self.xscroll.grid(column=0, row=1, sticky=(E + W))
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        # Insert all the items and init the title row callbacks (for filtering).
+        self._init_title_row_callback()
+        self._init_insert_items()
+        if len(self.tree.get_children()) > 0:
+            self.tree.focus(self.tree.get_children()[0])
+
+        # Set original order to the items (so ctrl+t will restore to default).
+        self.original_order = self.get_all_children(self.tree)
+        #self.original_order = sorted(self.original_order, key=lambda x: int(str(x[1][0] if isinstance(x[1], tuple) else x[0])[1:], 16))
+
+        # Menu creation.
+        self.aMenu = Menu(master, tearoff=0)
+        self.HeaderMenu = Menu(master, tearoff=0)
+        self.HeaderMenu.add_command(label='Select Columns...', command=self.header_selected)
+        self.HeaderMenu.add_command(label='Default Columns', command=self.display_only)
+        self.HeaderMenu.add_separator()
+        self.HeaderMenu.add_command(label='Hide Column', command=self.hide_selected_col)
+        self.HeaderMenu.add_separator()
+        if has_csv:
+            self.HeaderMenu.add_command(label='Export Table To Csv', command=self.export_table_csv)
+            self.HeaderMenu.add_separator()
+        if resizeable:
+            self.HeaderMenu.add_command(label='Resize Column', command=self.resize_selected_col)
+            self.HeaderMenu.add_command(label='Resize All Columns', command=self.resize_all_columns)
+        self.copy_menu = Menu(self.aMenu)
+
+        for header in range(len(self.headers)):
+            self.copy_menu.add_command(label='{}'.format(self.headers[header]), command=functools.partial(self.RunCopy, header))
+        self.aMenu.add_cascade(label='Copy', menu=self.copy_menu)
+
+        """Write Menu (may support in the future..)
+        self.write_menu = Menu(self.aMenu)
+        for header in range(len(self.headers)):
+            self.write_menu.add_command(label='{}'.format(self.headers[header]), command=functools.partial(self.RunWrite, header))
+        self.aMenu.add_cascade(label='Write', menu=self.write_menu)
+        """
+
+        # Binding keys.
+        self.tree.bind('<KeyPress>', self.allKeyboardEvent if self.folder_by_item is None else self.allKeyboardEventTree)
+        self.tree.bind("<Double-1>", self.OnDoubleClick)
+        self.tree.bind(right_click_event, self.popup)
+        self.tree.bind('<Control-c>', self.header_selected)
+        self.tree.bind('<Control-C>', self.header_selected)
+        self.tree.bind('<Control-t>', self.show_original_order)
+        self.tree.bind('<Control-T>', self.show_original_order)
+
+        # header press and release (if disable header replace is disable we still enable them but without the animation).
+        self.tree.bind("<ButtonPress-1>", self.bDown)
+        self.tree.bind("<ButtonRelease-1>", self.bUp)
+        self.tree.bind('<Motion>', self.OnMotion)
+
+        # This binding relevent only if there is virtual drag
+        if not self.disable_header_replace:
+            self.tree.bind("<<TreeviewOpen>>", self.open_virtual_tree)
+            self.tree.bind("<<TreeviewClose>>", self.close_virtual_tree)
+            self.tree.bind("<<TreeviewSelect>>", self.set_item)
+
+    def _init_insert_items(self):
+        '''
+        This function insert item to the table (wheter is a regular table or a treetable).
+        :return: None
+        '''
+
+        # check if this is folder tree (To make if faster there is big if on the top instead of inside, what makes this kind of duplicated code)
+        if self.folder_by_item !=None:
+
+            # Parent dics for the tree
+            self.parents_dict = {}
+
+            # the iteretion with resize
+            if self.resize:
+
+                # If the user want the header replace drag and drop support.
+                if not self.disable_header_replace:
+
+                    self.v_parents_dict = {}
+
+                    # Go all over the data.
+                    for item in self.data:
+                        item = [str(c_item).replace('{', r'\{').encode('utf-8',errors='ignore').decode('utf-8', errors='ignore') for c_item in item]
+                        c_tag = re.sub('[^\S0-9a-zA-Z]', '_', item[self.text_by_item])
+                        foldered = item[self.folder_by_item].count(self.folder_text)
+                        item[self.folder_by_item] = item[self.folder_by_item].replace(self.folder_text, "")
+
+                        # If this item sun of no one.
+                        if not foldered or foldered-1 not in self.parents_dict:
+                            self.parents_dict[foldered] = self.tree.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+                            self.v_parents_dict[foldered] = self.visual_drag.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+                        else:
+                            self.parents_dict[foldered] = self.tree.insert(self.parents_dict[foldered-1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+                            self.v_parents_dict[foldered] = self.visual_drag.insert(self.v_parents_dict[foldered - 1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+
+                        # adjust column's width if necessary to fit each value
+                        for idx, val in enumerate(item):
+                            col_width = tkinter.font.Font().measure(val)
+                            # option can be specified at least 3 ways: as (a) width=None,
+                            # (b) option='width' or (c) 'width', where 'width' can be any
+                            # valid column option.
+                            if self.tree.column(self.headers[idx], 'width') < col_width:
+                                self.tree.column(self.headers[idx], width=col_width)
+                                self.visual_drag.column(self.headers[idx], width=col_width)
+                else:
+                    # Go all over the data.
+                    for item in self.data:
+                        item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
+                        c_tag = re.sub('[^\S0-9a-zA-Z]', '_', item[self.text_by_item])
+                        foldered = item[self.folder_by_item].count(self.folder_text)
+                        item[self.folder_by_item] = item[self.folder_by_item].replace(self.folder_text, "")
+
+                        # If this item sun of no one.
+                        if not foldered or foldered-1 not in self.parents_dict:
+                            self.parents_dict[foldered] = self.tree.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+                        else:
+                            self.parents_dict[foldered] = self.tree.insert(self.parents_dict[foldered - 1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+
+                        # adjust column's width if necessary to fit each value
+                        for idx, val in enumerate(item):
+                            col_width = tkinter.font.Font().measure(val)
+                            # option can be specified at least 3 ways: as (a) width=None,
+                            # (b) option='width' or (c) 'width', where 'width' can be any
+                            # valid column option.
+                            if self.tree.column(self.headers[idx], 'width') < col_width:
+                                self.tree.column(self.headers[idx], width=col_width)
+
+            # No resize.
+            else:
+
+                # If the user want the header replace drag and drop support.
+                if not self.disable_header_replace:
+
+                    self.v_parents_dict = {}
+
+                    # Go all over the data and insert the items.
+                    for item in self.data:
+                        item = [str(c_item).replace('{', r'\{').encode('utf-8',errors='ignore').decode('utf-8', errors='ignore') for c_item in item]
+                        c_tag = re.sub('[^\S0-9a-zA-Z]', '_', item[self.text_by_item])
+                        foldered = item[self.folder_by_item].count(self.folder_text)
+                        item[self.folder_by_item] = item[self.folder_by_item].replace(self.folder_text, "")
+
+                        # If this item sun of no one.
+                        if not foldered:
+                            self.parents_dict[foldered] = self.tree.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+                            self.v_parents_dict[foldered] = self.visual_drag.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+                        elif foldered-1 in self.parents_dict:
+                            self.parents_dict[foldered] = self.tree.insert(self.parents_dict[foldered-1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+                            self.v_parents_dict[foldered] = self.visual_drag.insert(self.v_parents_dict[foldered - 1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+                else:
+
+                    # Go all over the data and insert the item.s
+                    for item in self.data:
+                        item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
+                        c_tag = re.sub('[^\S0-9a-zA-Z]', '_', item[self.text_by_item])
+                        foldered = item[self.folder_by_item].count(self.folder_text)
+                        item[self.folder_by_item] = item[self.folder_by_item].replace(self.folder_text, "")
+
+                        # If this item sun of no one.
+                        if not foldered:
+                            self.parents_dict[foldered] = self.tree.insert('', END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+                        elif foldered - 1 in self.parents_dict:
+                            self.parents_dict[foldered] = self.tree.insert(self.parents_dict[foldered - 1], END, text=str(item[self.folder_by_item]), values=item, tags=c_tag, open=True)
+
+        # No headers table.
+        else:
+            self.insert_items(self.data)
+
+    def _init_title_row_callback(self):
+        # build tree
+        for col in self.headers:
+            # NOTE: Use col as column identifiers, crafty!
+            # NOTE: Also change col to title case using str.title()
+            # NOTE: make lambda behave nicely in a loop using default arg!
+            callback = lambda c=col: self.sortby(c, False)
+            self.tree.heading(col, text=col.title(), command=callback)
+            self.visual_drag.heading(col, text=col.title())#, command=callback)
+            # adjust the column's width to the header string
+            self.tree.column(col, width=tkinter.font.Font().measure(col.title()))
+            self.visual_drag.column(col, width=tkinter.font.Font().measure(col.title()))
+
+    def insert_items(self, data):
+        '''
+        This function insert the data to the table
+        wrap insert with try except to speedup preformance.
+        :param data: list of tuples (the items to insert)
+        :return: None
+        '''
+        # If resize is enable
+        if self.resize:
+
+            # Create with visual_drag (for drag and drop support on headers).
+            if not self.disable_header_replace:
+                # Go all over the data and insert the items
+                for item in data:
+
+                    # Add try except to improve performance
+                    try:
+                        c_tag = str(item[self.text_by_item])
+                        self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                        self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                    except (Exception, tk.TclError):
+
+                        # This will fail as well (so both table will be in the same item count)
+                        try:
+                            self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                        except (Exception, tk.TclError) as ex:
+                            pass
+
+                        try:
+                            item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
+                            c_tag = re.sub('[^\S0-9a-zA-Z]', '_', str(item[self.text_by_item]))
+                            self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                            self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                        except tk.TclError:
+                            print('[-] Fail to insert {} to the table'.format(item))
+                            try:
+                                self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                            except tk.TclError:
+                                pass
+
+                    # adjust column's width if necessary to fit each value
+                    for idx, val in enumerate(item):
+                        col_width = tkinter.font.Font().measure(val)
+                        # option can be specified at least 3 ways: as (a) width=None,
+                        # (b) option='width' or (c) 'width', where 'width' can be any
+                        # valid column option.
+                        if self.tree.column(self.headers[idx], 'width') < col_width:
+                            self.tree.column(self.headers[idx], width=col_width)
+                            self.visual_drag.column(self.headers[idx], width=col_width)
+
+            # there is no visual_drag
+            else:
+                # Go all over the data and insert the items
+                for item in data:
+
+                    # Add try except to improve performance
+                    try:
+                        c_tag = str(item[self.text_by_item])
+                        self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                    except (Exception, tk.TclError):
+
+                        try:
+                            item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
+                            c_tag = re.sub('[^\S0-9a-zA-Z{}]', '_', str(item[self.text_by_item]))
+                            self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                        except tk.TclError:
+                            print('[-] Fail to insert {} to the table'.format(item))
+
+                    # adjust column's width if necessary to fit each value
+                    for idx, val in enumerate(item):
+                        col_width = tkinter.font.Font().measure(val)
+                        # option can be specified at least 3 ways: as (a) width=None,
+                        # (b) option='width' or (c) 'width', where 'width' can be any
+                        # valid column option.
+                        if self.tree.column(self.headers[idx], 'width') < col_width:
+                            self.tree.column(self.headers[idx], width=col_width)
+
+        # If resize is disable.
+        else:
+
+            # Create with visual_drag (for drag and drop support on headers).
+            if not self.disable_header_replace:
+
+                # Go all over the data and insert the items
+                for item in data:
+
+                    # Add try except to improve performance
+                    try:
+                        c_tag = str(item[self.text_by_item])
+                        self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                        self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                    except (Exception, tk.TclError):
+
+                        # This will fail as well (so both table will be in the same item count)
+                        try:
+                            self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                        except (Exception, tk.TclError) as ex:
+                            pass
+
+                        try:
+                            item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
+                            c_tag = re.sub('[^\S0-9a-zA-Z]', '_', str(item[self.text_by_item]))
+                            self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                            self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                        except tk.TclError:
+                            print('[-] Fail to insert {} to the table'.format(item))
+                            try:
+                                self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                            except tk.TclError:
+                                pass
+            else:
+
+                # Go all over the data and insert the items
+                for item in data:
+
+                    # Add try except to improve performance
+                    try:
+                        c_tag = str(item[self.text_by_item])
+                        self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                    except (Exception, tk.TclError):
+                        try:
+                            item = [str(c_item).replace('{', r'\{').replace('}', r'\}').encode().decode('utf-8',errors='ignore') for c_item in item]
+                            c_tag = re.sub('[^\S0-9a-zA-Z{}]', '_', str(item[self.text_by_item]))
+                            self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                        except tk.TclError:
+                            print('[-] Fail to insert {} to the table'.format(item))
+
+        if len(self.tree.get_children()) > 0:
+            self.tree.focus(self.tree.get_children()[0])
+
+        # Set original order to the items (so ctrl+t will restore to default).
+        if self.resize:
+            self.original_order = self.get_all_children(self.tree)
+        self.data += data
+
+    def get_all_children(self, tree, item="", only_opened=True):
+        '''
+        This function will return a list of all the children.
+        :param tree: tree to iterate.
+        :param item: from item
+        :param only_opened: go only over the items that nop colaps.
+        :return: list of all the items [(item, parent), (item, parent)]
+        '''
+        open_opt = tk.BooleanVar()
+        children = []
+
+        # Go all over the childrens
+        for child in tree.get_children(item):
+
+            # Append children and parent
+            children.append((child, item))
+            open_opt.set(str(tree.item(child, option='open')))
+
+            # If only opened items is searched
+            if open_opt.get() or not only_opened:
+                children += self.get_all_children(tree, child, only_opened)
+        return children
+
+    def allKeyboardEvent(self, event):
+        '''
+        This function go to the item that start with the key pressed by the user (or word), this function search for the current first columns
+        if column is moved its will update to the new first column.
+        :param event: event
+        :return: None
+        '''
+
+        # Check for valid key
+        if event.keysym_num > 0 and event.keysym_num < 60000:
+
+            # Check if there is any item selected (else select the first one).
+            if len(self.tree.selection()) > 0:
+                item = self.tree.selection()[0]
+            else:
+                item = self.tree.get_children('')[0]
+            clicked_item = item
+
+            # A timer (for types a words and not just a char.
+            if time.time() - self.row_search[1] > 2:
+                self.row_search = ('', self.row_search[1])
+
+            # Check for the same character twice in a row.
+            if len(self.row_search[0]) == 1 and self.row_search[0][0] == event.char.lower():
+                self.row_search = (self.row_search[0][0], time.time())
+            else:
+                self.row_search = ('{}{}'.format(self.row_search[0], event.char.lower()), self.row_search[1])
+            after_selected = False
+
+            # Check all the rows after the current selection.
+            for ht_row in self.tree.get_children():
+                if clicked_item == ht_row:
+                    after_selected = True
+                    if time.time() - self.row_search[1] > 2 or len(self.row_search[0]) == 1:
+                        continue
+                if not after_selected:
+                    continue
+                if (self.tree["displaycolumns"][0] != '#all' and str(self.tree.item(ht_row)['values'][self.headers.index(self.tree["displaycolumns"][0])]).lower().startswith(self.row_search[0])) or str(self.tree.item(ht_row)['values'][self.text_by_item]).lower().startswith(self.row_search[0]):
+                    self.tree.focus(ht_row)
+                    self.tree.selection_set(ht_row)
+                    self.tree.see(ht_row)
+                    self.row_search = (self.row_search[0], time.time())
+                    return
+
+            # Check all the rows before the current selection.
+            for ht_row in self.tree.get_children():
+                if clicked_item == ht_row:
+                    break
+                if (self.tree["displaycolumns"][0] != '#all' and str(self.tree.item(ht_row)['values'][self.headers.index(self.tree["displaycolumns"][0])]).lower().startswith(self.row_search[0])) or str(self.tree.item(ht_row)['values'][self.text_by_item]).lower().startswith(self.row_search[0]):
+                    self.tree.focus(ht_row)
+                    self.tree.selection_set(ht_row)
+                    self.tree.see(ht_row)
+                    self.row_search = (self.row_search[0], time.time())
+                    return
+
+            self.bell()
+            self.row_search = ('', 0)
+
+    def allKeyboardEventTree(self, event):
+        '''
+        This function go to the item that start with the key pressed by the user (or word), this function search for the first only!
+        :param event: event
+        :return: None
+        '''
+
+        # Check for valid key
+        if event.keysym_num > 0 and event.keysym_num < 60000:
+            if len(self.tree.selection()) > 0:
+                item = self.tree.selection()[0]
+            else:
+                item = self.tree.get_children('')[0]
+            clicked_item = item
+            if time.time() - self.row_search[1] > 2:
+                self.row_search = ('', self.row_search[1])
+
+            # Check for the same character twice in a row.
+            if len(self.row_search[0]) == 1 and self.row_search[0][0] == event.char.lower():
+                self.row_search = (self.row_search[0][0], time.time())
+            else:
+                self.row_search = ('{}{}'.format(self.row_search[0], event.char.lower()), self.row_search[1])
+            after_selected = False
+
+            childrens = self.get_all_children(self.tree)
+
+            # Check all the rows after the current selection.
+            for ht_row in childrens:
+                ht_row = ht_row[0]
+                if clicked_item == ht_row:
+                    after_selected = True
+                    if time.time() - self.row_search[1] > 2 or len(self.row_search[0]) == 1:
+                        continue
+                if not after_selected:
+                    continue
+                if str(self.tree.item(ht_row)['text']).replace(' ','').lower().startswith(self.row_search[0]):
+                    self.tree.focus(ht_row)
+                    self.tree.selection_set(ht_row)
+                    self.tree.see(ht_row)
+                    self.row_search = (self.row_search[0], time.time())
+                    return
+
+            # Check all the rows before the current selection.
+            for ht_row in childrens:
+                ht_row = ht_row[0]
+                if clicked_item == ht_row:
+                    break
+                if str(self.tree.item(ht_row)['text']).replace(' ','').lower().startswith(self.row_search[0]):
+                    self.tree.focus(ht_row)
+                    self.tree.selection_set(ht_row)
+                    self.tree.see(ht_row)
+                    self.row_search = (self.row_search[0], time.time())
+                    return
+
+            self.bell()
+            self.row_search = ('', 0)
+
+    def RunCopy(self, cp):
+        '''
+        Copy the item selected to the clipboard.
+        '''
+        clip = self.tree
+        row = self.tree.selection()[0]
+        item = self.tree.item(row)
+        clip.clipboard_clear()
+        item_text = item['values'][cp]
+        clip.clipboard_append(str(item_text))
+
+    def OnMotion(self, event):
+        """
+        This function handle mouse motion event, on headers moves by the user (drag and drop support). and the tooltip help.
+        :param event:
+        :return:
+        """
+
+        # Handle Motion on dnd column.
+        tv = event.widget
+
+        # drag around label if visible
+        if self.visual_drag.winfo_ismapped():
+            self.swapped = True
+            self.last_x = float(self.current_x)
+            self.current_x = float(event.x)
+            x = self.dx + event.x
+
+            # middle of the dragged column.
+            xm = int(x + self.visual_drag.column(self.col_from_id, 'width') // 2)
+            self.visual_drag.place_configure(x=x)
+            col = tv.identify_column(xm)
+
+            # if the middle of the dragged column is in another column, swap them
+            if col and tv.column(col, 'id') != self.col_from_id:
+                self.swap(tv, self.col_from_id, col, 'right' if self.current_x - self.last_x > 0 else 'left')
+
+        # Handle tooltip creation
+        if self.text_popup:
+
+            # Problem with tk version (just update the version).
+            try:
+
+                # Create small square with information
+                _iid = self.tree.identify_row(event.y)
+
+                # If hold on table header
+                if not _iid or not self.tree.identify_column(event.x)[1:]:
+                    return
+
+                item = self.tree.item(_iid)
+            except tk.TclError:
+                return
+
+            # Hide the current tooltip (if there is any).
+            if hasattr(self, "toolTop"):
+                self.toolTop.hidetip()
+
+            # Create a tooltip.
+            self.toolTop = TreeToolTip(self.tree, event)
+
+            # Find the selected column
+            col = int(self.tree.identify_column(event.x)[1:]) -1 if int(self.tree.identify_column(event.x)[1:]) else 0
+            text_to_show = ""
+
+            # Make sure to add to the foldered tree's the realy first column info as well so they have more information displayed in the tooltip.
+            if self.folder_by_item != None:
+                text_to_show = "{}: {}\n".format(self.headers[self.folder_by_item], self.tree.item(_iid)['values'][self.folder_by_item])
+
+            # Get the selected column (acourding to the current display).
+            display = self.tree["displaycolumns"]
+            text_to_show += "{}: {}".format(self.headers[self.text_by_item], self.tree.item(_iid)['values'][self.text_by_item])
+
+
+            # If we not on motion on text_by_item column(witch already displayed...).
+            if self.headers[self.text_by_item] not in display or col != display.index(self.headers[self.text_by_item]):
+                text_to_show += "\n{}: {}".format(display[col], item['values'][self.headers.index(display[col])] if len(item['values']) > self.headers.index(display[col]) else '')
+            self.toolTop.showtip(text_to_show)
+
+
+            def leave(event):
+                ''' hide the diplayed tooltip '''
+                self.toolTop.hidetip()
+            self.tree.bind('<Leave>', leave)
+
+    def swap(self, tv, col1, col2, direction):
+        '''
+        This function swap 2 columns
+        :param tv: treeview
+        :param col1: col
+        :param col2: col
+        :param direction: direction
+        :return: None
+        '''
+        dcols = list(tv["displaycolumns"])
+
+        # When all the columsn is selected we get #all instead of tuples with the names of the row, so lets replace this.
+        if dcols[0] == "#all":
+            dcols = list(tv["columns"])
+
+        # Get the columns id
+        id1 = self.tree.column(col1, 'id')
+        id2 = self.tree.column(col2, 'id')
+
+        # Return if one of the columns is not valid (the header column for the folder table).
+        if id1 == '' or id2 == '':
+            return
+
+        # Get the index of the ids.
+        i1 = dcols.index(id1)
+        i2 = dcols.index(id2)
+
+        # Return if the columns is not valid (before the first or after the last).
+        if (i1 - i2 > 0 and direction == 'right') or (i1 - i2 < 0 and direction == 'left'):
+            return
+
+        # Swap.
+        dcols[i1] = id2
+        dcols[i2] = id1
+
+        # Display in the new order.
+        tv["displaycolumns"] = dcols
+        self.swapped = True
+
+    def bDown(self, event):
+        '''
+        This function handle button down event (when we try replace 2 columns).
+        :param event:
+        :return:
+        '''
+        tv = tree = event.widget
+        left_column = tree.identify_column(event.x)
+
+        # Check if this columns is valid (not the header for folder).
+        if left_column[1:] == '':
+            return
+
+        right_column = '#%i' % (int(tree.identify_column(event.x)[1:]) + 1)
+
+        # Get the left index
+        if (not isinstance(left_column, int)) and (not left_column.isdigit()) and (
+                left_column.startswith('I') or left_column.startswith('#')):
+            left_column = int(left_column[1:])
+        left_column -= 1
+
+        # This is the text header of the treeview(the left column if text header present).
+        if left_column != -1:
+            left_column = self.headers.index(self.tree["displaycolumns"][left_column])
+            width_l = tree.column(left_column, 'width')
+            self.visual_drag.column(left_column, width=width_l)
+
+        # Get the right column
+        if (not isinstance(right_column, int)) and (not right_column.isdigit()) and (
+                right_column.startswith('I') or right_column.startswith('#')):
+            right_column = int(right_column[1:])
+        right_column -= 1
+
+        # This is the text header of the treeview(the left column if text header present).
+        if right_column < len(self.tree["displaycolumns"]):
+            right_column = self.headers.index(self.tree["displaycolumns"][right_column])
+            width_r = tree.column(right_column, 'width')
+            self.visual_drag.column(right_column, width=width_r)
+
+        # Problem with tk version minumum support 8.5.
+        try:
+            c_region = tv.identify_region(event.x, event.y)
+        except tk.TclError:
+            c_region = 'heading' if event.y < 26 else 'not good tk version'
+
+        # Check the user select the header of the table.
+        if c_region == 'heading':
+            self.swapped = False
+            col = tv.identify_column(event.x)
+            self.col_from_id = tv.column(col, 'id')
+
+            # Iterate all the treeview only if we have not disable header replace.
+
+
+            # get column x coordinate and width
+            if self.col_from_id and self.col_from_id != 0:
+                all_children = tv.get_children() #self.get_all_children(tv)
+                for i in all_children:
+                    bbox = tv.bbox(i, self.col_from_id) #bbox = tv.bbox(i[1][0] if isinstance(i[1], tuple) else i[0], self.col_from_id)
+                    if bbox:
+                        self.dx = bbox[0] - event.x  # distance between cursor and column left border
+                        #        tv.heading(col_from_id, text='')
+                        def set_y(*args):
+                            self.visual_drag.yview_moveto(self.yscroll.get()[0])
+
+                        def set_y2(event):
+                            shift = (event.state & 0x1) != 0
+                            scroll = -1 if event.delta > 0 else 1
+                            if shift:
+                                self.visual_drag.xview_scroll(scroll, "units")
+                            else:
+                                self.visual_drag.yview_scroll(scroll, "units")
+
+                        # Check if we display beautiful header or not
+                        if not self.disable_header_replace:
+                            self.visual_drag.configure(displaycolumns=[self.col_from_id], yscrollcommand=set_y)
+                            self.tree.bind("<MouseWheel>", set_y2)
+                            self.visual_drag.place(in_=tv, x=bbox[0], y=0, anchor='nw', width=bbox[2], relheight=1)
+                            self.visual_drag.selection_set(tv.selection())
+                            self.visual_drag.yview_moveto(self.yscroll.get()[0])
+                        else:
+                            self.visual_drag.configure(displaycolumns=[self.col_from_id])
+                            self.visual_drag.place(in_=tv, x=event.x, y=0, anchor='nw', width=bbox[2], relheight=1)
+                        return
+
+        else:
+            self.col_from_id = None
+
+            # Reset the timer (if we select seperator).
+            if c_region == 'separator':
+                self.last_seperator_time = time.time()
+
+    def bUp(self, event):
+        ''' This function hide the visual drage when the courser is up'''
+        self.visual_drag.place_forget()
+
+    def open_virtual_tree(self, event):
+        ''' This function open the visual_drag when the regulare tree is open'''
+        if len(self.tree.selection()) > 0:
+            self.visual_drag.item(self.tree.selection()[0], open=1)
+
+    def close_virtual_tree(self, event):
+        ''' This function close the visual_drag when the regulare tree is close'''
+        if len(self.tree.selection()) > 0:
+            self.visual_drag.item(self.tree.selection()[0], open=0)
+
+    def set_item(self, event):
+        ''' This function set the selection item in te visual_drag when the regulare tree is selection is change'''
+        if len(self.tree.selection()) > 0:
+            item = self.tree.selection()[0]
+            self.visual_drag.selection_set(item)
+            self.tree.focus(item)
+            self.tree.see(item)
+
+    def OnDoubleClick(self, event):
+        ''' This function handle double click press (for header resize)'''
+        # Double click on table header to resize
+        if event and event.y < 25 and event.y > 0:
+            try:
+                if self.tree.identify_region(event.x, event.y) == 'separator':
+                    self.resize_col(self.tree.identify_column(event.x))
+            except tk.TclError:
+                pass # This Tkinter version dont support identify region event.
+
+    def resize_col(self, col):
+        '''
+        This function resize some collumn.
+        :param col: the col to resize (fix size).
+        :return: None
+        '''
+        if (not isinstance(col, int)) and (not col.isdigit()) and (col.startswith('I') or col.startswith('#')):
+            col = int(col[1:])
+        col -= 1#col-1 if col!=0 else 0
+
+        # This is the text header of the treeview(the left column if text header present).
+        if col == -1:
+            return
+        col = self.headers.index(self.tree["displaycolumns"][col])
+        max_len = 0
+
+        # Get the beggest line and resize
+        for row in self.get_all_children(self.tree):
+            row = row[0]
+            item = self.tree.item(row)
+            current_len = tkinter.font.Font().measure(str(item['values'][col]))
+            if current_len > max_len:
+                max_len = current_len
+        self.tree.column(self.headers[col], width=(max_len))
+
+        if not self.disable_header_replace:
+            self.visual_drag.column(self.headers[col], width=(max_len))
+
+    def display_only(self, event=None, display=None):
+        ''' This function display only the wanted items (and save them)'''
+        self.tree["displaycolumns"] = display if display else self.display
+
+        if not self.disable_header_replace:
+            self.visual_drag["displaycolumns"] = display if display else self.display
+
+        if self.global_preference and display:
+            globals()[self.global_preference][str(self.headers)] = display
+
+    def header_selected(self,event=None):
+        ''' This function display the move list for header selected '''
+
+        def on_exit():
+            ''' Delete the header app when he die and set to None'''
+            self.app_header.destroy()
+            self.app_header = None
+
+        # If the user select to display the select columns just pop it up (if its exist, else create it).
+        if self.app_header:
+            self.app_header.attributes('-topmost', 1)
+            self.app_header.attributes('-topmost', 0)
+        else:
+
+            # Get the current displayed columns.
+            display = self.tree["displaycolumns"]
+
+            # Get the current hiden columns
+            hide = [item for item in self.headers if item not in self.tree["displaycolumns"]]
+
+            # Remove the first header if this a folder treeview (unsupported).
+            if self.folder_by_item != None:
+                hide.remove(self.headers[self.folder_by_item])
+
+            # Create the movelists gui.
+            self.app_header = MoveLists(display, hide, self.display_only)
+            x = self.winfo_x()
+            y = self.winfo_y()
+            self.app_header.geometry("+%d+%d" % (x + ABS_X, y + ABS_Y))
+            self.app_header.resizable(False, False)
+            self.app_header.title("Select Columns")
+            self.app_header.protocol("WM_DELETE_WINDOW", on_exit)
+
+    def hide_selected_col(self):
+        ''' This functio handle the hide column header menu function'''
+        display = list(self.tree["displaycolumns"])
+        col = self.tree.identify_column(self.HeaderMenu.c_event.x)
+        if (not isinstance(col, int)) and (not col.isdigit()) and (col.startswith('I') or col.startswith('#')):
+            col = int(col[1:])
+        col -= 1
+
+        # This is the text header of the treeview(the left column if text header present).
+        if col == -1:
+            return
+        col = self.tree["displaycolumns"][col]
+
+        display.remove(col)
+        self.display_only(None, display)
+
+    def resize_selected_col(self):
+        ''' This function handle the resize column from the menu of the table header '''
+        self.resize_col(self.tree.identify_column(self.HeaderMenu.c_event.x))
+
+    def resize_all_columns(self):
+        ''' This funtion resize all the columns (handle the resize all columns from the menu funciton).'''
+        for col in range(len(self.tree["displaycolumns"])+1):
+            self.resize_col(col)
+
+    def SetColorItem(self, color, item=None, tag=None):
+        '''
+        This function set a color to a specific item/tag.
+        :param color: the new color.
+        :param item: item name (optional)
+        :param tag: tag name (optional)
+        :return: None
+        '''
+
+        # Validate that the user give item/tag and set his color.
+        if item or tag:
+            tag = tag if tag else self.tree.item(item)['values'][self.text_by_item]
+            tag = str(tag).replace(' ', '_')
+            self.tree.tag_configure(tag, background=color)
+            if not self.disable_header_replace:
+                self.visual_drag.tag_configure(tag, background=color)
+
+    def export_table_csv(self):
+        ''' Export the table to csv file '''
+        selected = tkinter.filedialog.asksaveasfilename(parent=self)
+        if selected and selected != '':
+            with open(selected, 'w') as fhandle:
+                csv_writer = csv.writer(fhandle)
+                csv_writer.writerow(self.headers)
+
+                # Export acording to if folder or not
+                if self.folder_by_item != None:
+                    for row in self.data:
+                        csv_writer.writerow(row[:self.folder_by_item] + [row[self.folder_by_item].replace(self.folder_text, '~')] + row[self.folder_by_item+1:])
+                else:
+                    for row in self.data:
+                        csv_writer.writerow(row)
+
+    def popup(self, event):
+        ''' This function popup the right menu '''
+
+        # Stop swapping if the user moving some header.
+        if self.swapped:
+            self.bUp(event)
+
+        # If header selected:
+        if event.y < 25 and event.y > 0:
+            self.HeaderMenu.c_event = event
+            self.HeaderMenu.tk_popup(event.x_root, event.y_root)
+        else:
+
+            # Select the item and popup menu
+            self.tree.selection_set(self.tree.identify_row(event.y))
+            if not self.disable_header_replace:
+                self.visual_drag.selection_set(self.tree.identify_row(event.y))
+            self.aMenu.tk_popup(event.x_root, event.y_root)
+
+    def sortby(self, col, descending):
+        '''
+        This function sort column
+        :param col: column to sort
+        :param descending: order True-descending or false-ascending (saved and switch each time)
+        :return:
+        '''
+
+
+        # grab values to sort
+        if time.time() - self.last_seperator_time < 0.75 or self.swapped:
+            self.swapped = False
+            return
+        data = [(self.tree.set(child[0], col), child)
+                for child in self.get_all_children(self.tree)]
+
+        # now sort the data in place (try first to sort by hex value (int is good to) than by string)
+        try:
+            data = sorted(data, reverse=descending, key=lambda x: int(x[0], 16))
+        except (ValueError, TypeError):
+            data.sort(reverse=descending)
+
+        for idx, item in enumerate(data):
+            self.tree.move(item[1][0], '', idx)
+            if not self.disable_header_replace:
+                self.visual_drag.move(item[1][0], '', idx)
+
+        # switch the heading so it will sort in the opposite direction
+        callback = lambda: self.sortby(col, not descending)
+        self.tree.heading(col, command=callback)
+
+    def show_original_order(self, event=None):
+        ''' This function show the original order of the tree (created order)'''
+        for idx, item in enumerate(self.original_order):
+            if isinstance(item[1], tuple):
+                item = item[1]
+            self.tree.move(item[0], item[1], idx)
+            self.visual_drag.move(item[0], item[1], idx)
 
 class ExpSearch(tk.Toplevel):
-	'''
-	Search for explorer class, handle explorer ctrl+f
-	'''
-	def __init__(self, headers=('Path', 'Name', 'Value'), dict=None, dict_headers=None, controller=None, *args, **kwargs):#(path,name,value)
-		tk.Toplevel.__init__(self, *args, **kwargs)
+    '''
+    Search for explorer class, handle explorer ctrl+f
+    '''
+    def __init__(self, headers=('Path', 'Name', 'Value'), dict=None, dict_headers=None, controller=None, *args, **kwargs):#(path,name,value)
+        tk.Toplevel.__init__(self, *args, **kwargs)
 
-		# Init variables
-		self.headers = headers
-		self.dict = dict
-		self.dict_headers = dict_headers
-		self.controller = controller
+        # Init variables
+        self.headers = headers
+        self.dict = dict
+        self.dict_headers = dict_headers
+        self.controller = controller
 
-		# Init and pack the class gui.
-		self.grid_rowconfigure(0, weight=1)
-		self.grid_columnconfigure(0, weight=1)
-		self.search_text = tk.Entry(self)
-		self.search_text.insert(10, 'Search text here')
-		self.search_text.bind("<Return>", self.search)
-		self.search_text.pack()
-		self.select_box = Combobox(self, state="readonly", values=self.dict_headers)
-		self.select_box.current(0)
-		self.select_box.pack()
-		self.search_button = tk.Button(self, text="<- Search ->", command=self.search)
-		self.search_button.pack(fill='x')
-		self.tree = TreeTable(self, headers=headers, data=[], text_by_item=1, resize=True)
-		self.tree.pack(expand=YES, fill=BOTH)
+        # Init and pack the class gui.
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.search_text = tk.Entry(self)
+        self.search_text.insert(10, 'Search text here')
+        self.search_text.bind("<Return>", self.search)
+        self.search_text.pack()
+        self.select_box = Combobox(self, state="readonly", values=self.dict_headers)
+        self.select_box.current(0)
+        self.select_box.pack()
+        self.search_button = tk.Button(self, text="<- Search ->", command=self.search)
+        self.search_button.pack(fill='x')
+        self.tree = TreeTable(self, headers=headers, data=[], text_by_item=1, resize=True)
+        self.tree.pack(expand=YES, fill=BOTH)
 
-		# Bind and focus
-		self.tree.tree.bind("<Return>", self.OnDoubleClick)
-		self.tree.tree.bind("<Double-1>", self.OnDoubleClick)
-		self.search_text.bind("<FocusIn>", self.focus_in)
-		self.search_text.focus()
+        # Bind and focus
+        self.tree.tree.bind("<Return>", self.OnDoubleClick)
+        self.tree.tree.bind("<Double-1>", self.OnDoubleClick)
+        self.search_text.bind("<FocusIn>", self.focus_in)
+        self.search_text.focus()
 
-	def focus_in(self, event=None):
-		'''
-		This function mark all the text inside the text widget for convenience.
-		:param event: None
-		:return: None
-		'''
-		self.search_text.selection_range(0, tk.END)
+    def focus_in(self, event=None):
+        '''
+        This function mark all the text inside the text widget for convenience.
+        :param event: None
+        :return: None
+        '''
+        self.search_text.selection_range(0, tk.END)
 
-	def OnDoubleClick(self, event):
-		'''
-		This fucntio go to the selected item in the parent explorer.
-		:param event: None
-		:return: None
-		'''
-		# Double click on table header to resize
-		if event and event.y < 25 and event.y > 0:
-			try:
-				if self.tree.tree.identify_region(event.x, event.y) == 'separator':
-					self.tree.resize_col(self.tree.tree.identify_column(event.x))
-				return
-			except tk.TclError:
-				return
-		# Double click where no item selected
-		elif len(self.tree.tree.selection()) == 0 :
-			return
+    def OnDoubleClick(self, event):
+        '''
+        This fucntio go to the selected item in the parent explorer.
+        :param event: None
+        :return: None
+        '''
+        # Double click on table header to resize
+        if event and event.y < 25 and event.y > 0:
+            try:
+                if self.tree.tree.identify_region(event.x, event.y) == 'separator':
+                    self.tree.resize_col(self.tree.tree.identify_column(event.x))
+                return
+            except tk.TclError:
+                return
+        # Double click where no item selected
+        elif len(self.tree.tree.selection()) == 0 :
+            return
 
-		# Go and select the clicked item.
-		item = self.tree.tree.selection()[0]
-		clicked_file_path = self.tree.tree.item(item)['values'][0]
-		file_name = self.tree.tree.item(item)['values'][1]
-		self.controller.GoToFile('{}\{}'.format(clicked_file_path, file_name), False)
+        # Go and select the clicked item.
+        item = self.tree.tree.selection()[0]
+        clicked_file_path = self.tree.tree.item(item)['values'][0]
+        file_name = self.tree.tree.item(item)['values'][1]
+        self.controller.GoToFile('{}\{}'.format(clicked_file_path, file_name), False)
 
-	def recurse_search(self, current_path, current_dir_files):
-		'''
-		A recursive function that go deep inside the dictionary database and look inside the '|properties|' key to find the searched item
-		:param current_path: key name (item name in the explorer)
-		:param current_dir_files: a pointer to the current dictionary to search inside
-		:return: None, its insert the data to the self.found_data (witch later be insert to the table) or call itself recursive inside.
-		'''
+    def recurse_search(self, current_path, current_dir_files):
+        '''
+        A recursive function that go deep inside the dictionary database and look inside the '|properties|' key to find the searched item
+        :param current_path: key name (item name in the explorer)
+        :param current_dir_files: a pointer to the current dictionary to search inside
+        :return: None, its insert the data to the self.found_data (witch later be insert to the table) or call itself recursive inside.
+        '''
 
-		# The item the user want to search
-		my_index = self.dict_headers.index(self.select_box.get())-1
+        # The item the user want to search
+        my_index = self.dict_headers.index(self.select_box.get())-1
 
-		try:
-			# Go all over the database dictionary.
-			for c_file in current_dir_files:
+        try:
+            # Go all over the database dictionary.
+            for c_file in current_dir_files:
 
-				# If it's not the item properties (this is another database).
-				if c_file != '|properties|':
+                # If it's not the item properties (this is another database).
+                if c_file != '|properties|':
 
-					# If the user search for the first box (the item name) than we append the data here.
-					if self.dict_headers.index(self.select_box.get()) == 0:
+                    # If the user search for the first box (the item name) than we append the data here.
+                    if self.dict_headers.index(self.select_box.get()) == 0:
 
-						# if this data match the user search than insert it
-						if self.text_to_search in c_file.lower():
-							self.found_data.append((current_path, c_file))
-					self.recurse_search('{}\\{}'.format(current_path, c_file),current_dir_files[c_file])
+                        # if this data match the user search than insert it
+                        if self.text_to_search in c_file.lower():
+                            self.found_data.append((current_path, c_file))
+                    self.recurse_search('{}\\{}'.format(current_path, c_file),current_dir_files[c_file])
 
-				# If this is the item properties.
-				else:
+                # If this is the item properties.
+                else:
 
-					# If this is what the user search for than insert the item to the table.
-					if self.text_to_search in str(tuple(current_dir_files[c_file])[my_index]).lower():
-						self.found_data.append((current_path[:current_path.rfind('\\')], current_path[current_path.rfind('\\')+1:], str(tuple(current_dir_files[c_file])[my_index])))
-		except RuntimeError:
-			self.recurse_search(current_path, current_dir_files)
-			self.found_data = list(set(self.found_data))
+                    # If this is what the user search for than insert the item to the table.
+                    if self.text_to_search in str(tuple(current_dir_files[c_file])[my_index]).lower():
+                        self.found_data.append((current_path[:current_path.rfind('\\')], current_path[current_path.rfind('\\')+1:], str(tuple(current_dir_files[c_file])[my_index])))
+        except RuntimeError:
+            self.recurse_search(current_path, current_dir_files)
+            self.found_data = list(set(self.found_data))
 
-	def search(self, event=None):
-		'''
-		The search handle function that summon the self.recursive_search function.
-		:return: None, this function will insert all the founded item to the table.
-		'''
+    def search(self, event=None):
+        '''
+        The search handle function that summon the self.recursive_search function.
+        :return: None, this function will insert all the founded item to the table.
+        '''
 
-		self.text_to_search = self.search_text.get().lower()
-		print("[+] searching for: {}".format(self.text_to_search), 'in', self.select_box.get(),'index:', self.dict_headers.index(self.select_box.get())-1)
+        self.text_to_search = self.search_text.get().lower()
+        print("[+] searching for: {}".format(self.text_to_search), 'in', self.select_box.get(),'index:', self.dict_headers.index(self.select_box.get())-1)
 
-		# Remove previouse searched items.
-		for i in self.tree.tree.get_children():
-			self.tree.tree.delete(i)
-			self.tree.visual_drag.delete(i)
+        # Remove previouse searched items.
+        for i in self.tree.tree.get_children():
+            self.tree.tree.delete(i)
+            self.tree.visual_drag.delete(i)
 
-		self.found_data = []
+        self.found_data = []
 
-		# Search for files.
-		for c_file in self.dict:
+        # Search for files.
+        for c_file in self.dict:
 
-			# Go all over the files.
-			if c_file != '|properties|':
-				self.recurse_search(c_file, self.dict[c_file])
+            # Go all over the files.
+            if c_file != '|properties|':
+                self.recurse_search(c_file, self.dict[c_file])
 
-		# Insert all the data to the table
-		self.tree.insert_items(self.found_data)
-
+        # Insert all the data to the table
+        self.tree.insert_items(self.found_data)
 
 '''
 class PtoV(common.AbstractWindowsCommand):
-	""" Physical To Virtual """
-	def __init__(self, config, pfndb=None, pte_address=None, page_offset=0, original_pte=None, *args, **kwargs):
-		common.AbstractWindowsCommand.__init__(self, config, *args, **kwargs)
+    """ Physical To Virtual """
+    def __init__(self, config, pfndb=None, pte_address=None, page_offset=0, original_pte=None, *args, **kwargs):
+        common.AbstractWindowsCommand.__init__(self, config, *args, **kwargs)
 
-		# Check if there is already memmap_dict(maybe not the first time this plugin used).
-		if hasattr(self, 'memmap_dict'):
-			return
-		self._config = config
-		#self.kaddr_space = utils.load_as(self._config)
+        # Check if there is already memmap_dict(maybe not the first time this plugin used).
+        if hasattr(self, 'memmap_dict'):
+            return
+        self._config = config
+        #self.kaddr_space = utils.load_as(self._config)
 
-		if pfndb:
-			self.pfndb = pfndb
-		else:
-			self.kdbg = win32.tasks.get_kdbg(self.kaddr_space)
-			self.pfndb = int(self.kaddr_space.read(self.kdbg.MmPfnDatabase, 8)[::-1].encode("hex"), 16)^ 0xffff000000000000 #??? ^ 0xffff000000000000
-		self.pte_address = pte_address
-		self.page_offset = page_offset
-		self.original_pte = original_pte
-		self.kernel_base = 0xffff80000000 # kdbg.???
-		self.getMemmap()
+        if pfndb:
+            self.pfndb = pfndb
+        else:
+            self.kdbg = win32.tasks.get_kdbg(self.kaddr_space)
+            self.pfndb = int(self.kaddr_space.read(self.kdbg.MmPfnDatabase, 8)[::-1].encode("hex"), 16)^ 0xffff000000000000 #??? ^ 0xffff000000000000
+        self.pte_address = pte_address
+        self.page_offset = page_offset
+        self.original_pte = original_pte
+        self.kernel_base = 0xffff80000000 # kdbg.???
+        self.getMemmap()
 
-	def getMemmap(self):
-		"""
-		Create the self.memmap_dict dictionary which contain mem map from physical to virtual.
-		self.memmap_dict = {EPROCESS, {physical address, virual address}}
-		"""
-		self.memmap_dict = {}
-		for task in tasks.pslist(self.kaddr_space):  #proc_layer.mapping(0x0, proc_layer.maximum_address, ignore_errors = True):
-			if task.UniqueProcessId:
-				offset = 0
-				task_space = task.get_process_address_space()
-				pages = task_space.get_available_pages()
-				self.memmap_dict[task] = {}
-				print('start map:', task.UniqueProcessId)
-				for page_addr, page_size in pages:
+    def getMemmap(self):
+        """
+        Create the self.memmap_dict dictionary which contain mem map from physical to virtual.
+        self.memmap_dict = {EPROCESS, {physical address, virual address}}
+        """
+        self.memmap_dict = {}
+        for task in tasks.pslist(self.kaddr_space):  #proc_layer.mapping(0x0, proc_layer.maximum_address, ignore_errors = True):
+            if task.UniqueProcessId:
+                offset = 0
+                task_space = task.get_process_address_space()
+                pages = task_space.get_available_pages()
+                self.memmap_dict[task] = {}
+                print('start map:', task.UniqueProcessId)
+                for page_addr, page_size in pages:
 
-					"""
-					# Skip Kernel address space(we have that on System process).
-					if page_addr > self.kernel_base and task.UniqueProcessId != 4:
-						print 'done map:', task.UniqueProcessId
-						break"""
-					pa = task_space.vtop(page_addr)
-					if pa != None:
-						data = task_space.read(page_addr, page_size)
-						if data != None:
-							self.memmap_dict[task][int(pa)] = int(page_addr)#, obj.Object("_MMPFN",self.pfndb + (0x30 * (physical_address >> 12)), self.kaddr_space or task_space))
+                    """
+                    # Skip Kernel address space(we have that on System process).
+                    if page_addr > self.kernel_base and task.UniqueProcessId != 4:
+                        print 'done map:', task.UniqueProcessId
+                        break"""
+                    pa = task_space.vtop(page_addr)
+                    if pa != None:
+                        data = task_space.read(page_addr, page_size)
+                        if data != None:
+                            self.memmap_dict[task][int(pa)] = int(page_addr)#, obj.Object("_MMPFN",self.pfndb + (0x30 * (physical_address >> 12)), self.kaddr_space or task_space))
 
 
-		def ptov(self, physical_address):
-			"""
-			this function return list of tuples(_EPROCESS, virtual address, physical address)
-			"""
-			all_proc_info = []
-			page_offset = physical_address % 0xFFF
-			physical_address = physical_address >> 12 << 12
-			for task in self.memmap_dict:
-				if physical_address in self.memmap_dict[task]:
-					all_proc_info.append((task, self.memmap_dict[task][physical_address], physical_address))
-			return all_proc_info
+        def ptov(self, physical_address):
+            """
+            this function return list of tuples(_EPROCESS, virtual address, physical address)
+            """
+            all_proc_info = []
+            page_offset = physical_address % 0xFFF
+            physical_address = physical_address >> 12 << 12
+            for task in self.memmap_dict:
+                if physical_address in self.memmap_dict[task]:
+                    all_proc_info.append((task, self.memmap_dict[task][physical_address], physical_address))
+            return all_proc_info
 
-			"""
-			# The PFN points at a prototype PTE.
-			if int(pfn_entry.u4.m('PrototypePte')):
-				cb_addr = pfn_entry.OriginalPte.u.Subsect.SubsectionAddress.v()
-				subsection = obj.Object("_SUBSECTION", cb_addr, self.kaddr_space)
+            """
+            # The PFN points at a prototype PTE.
+            if int(pfn_entry.u4.m('PrototypePte')):
+                cb_addr = pfn_entry.OriginalPte.u.Subsect.SubsectionAddress.v()
+                subsection = obj.Object("_SUBSECTION", cb_addr, self.kaddr_space)
 
-				pte_size = self.kaddr_space.profile.get_obj_size("_MMPTE")                        
-				offset = (pte_address - vad.FirstPrototypePte.v()) / pte_size
-				va = offset * 0x1000 + vad.Start + self.page_offset
-			
-			"""
+                pte_size = self.kaddr_space.profile.get_obj_size("_MMPTE")                        
+                offset = (pte_address - vad.FirstPrototypePte.v()) / pte_size
+                va = offset * 0x1000 + vad.Start + self.page_offset
+            
+            """
 
-		def calculate(self):
-			return ptov()
+        def calculate(self):
+            return ptov()
 
-		def render_text(self, outfd, data):
-			outfd.write("Process(Pid): Virtual Address -> Physical Adress")
-			for item in data:
-				outfd.write("{}({}): {} -> {}".format(item[0].ImageFileName, item[0].UniqueProcessId, item[1], item[2]))
+        def render_text(self, outfd, data):
+            outfd.write("Process(Pid): Virtual Address -> Physical Adress")
+            for item in data:
+                outfd.write("{}({}): {} -> {}".format(item[0].ImageFileName, item[0].UniqueProcessId, item[1], item[2]))
 '''
 
 class P2V(interfaces.plugins.PluginInterface):
-	""" Fast ptov (using pfndb) """
-	_version = (1, 0, 0)
+    """ Fast ptov (using pfndb) """
+    _version = (1, 0, 0)
 
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self._config = self.config
-		self._config.ADDRESS = self._config.get("ADDRESS", None)
-		if self._config.ADDRESS and self._config.ADDRESS.startswith("0x"):
-			self._config.ADDRESS = int(self._config.ADDRESS, 16)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._config = self.config
+        self._config.ADDRESS = self._config.get("ADDRESS", None)
+        if self._config.ADDRESS and self._config.ADDRESS.startswith("0x"):
+            self._config.ADDRESS = int(self._config.ADDRESS, 16)
 
-		self.kaddr_space = self.config['primary']
-		self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
-		self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
-										layer_name=self.kaddr_space,
-										offset=self.kvo)
+        self.kaddr_space = self.config['primary']
+        self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
+        self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
+                                        layer_name=self.kaddr_space,
+                                        offset=self.kvo)
 
 
-		_pointer_struct = struct.Struct("<Q") if self.ntkrnlmp.get_type('pointer').size == 8 else struct.Struct('I')
-		self._pfndb = int(_pointer_struct.unpack(self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmPfnDatabase').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
-		self.get_proc_pdbs()
+        _pointer_struct = struct.Struct("<Q") if self.ntkrnlmp.get_type('pointer').size == 8 else struct.Struct('I')
+        self._pfndb = int(_pointer_struct.unpack(self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmPfnDatabase').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
+        self.get_proc_pdbs()
 
-		self.HighestUserAddress = int(_pointer_struct.unpack(
-			self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmHighestUserAddress').address + self.kvo,
-			                                    self.ntkrnlmp.get_type('pointer').size))[0])
+        self.HighestUserAddress = int(_pointer_struct.unpack(
+            self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmHighestUserAddress').address + self.kvo,
+                                                self.ntkrnlmp.get_type('pointer').size))[0])
 
-		self.size_of_pte = self.ntkrnlmp.get_type("_MMPTE").size
-		self.size_of_pfn = self.ntkrnlmp.get_type("_MMPFN").size
-		self.map_process_vads_subsections()
+        self.size_of_pte = self.ntkrnlmp.get_type("_MMPTE").size
+        self.size_of_pfn = self.ntkrnlmp.get_type("_MMPFN").size
+        self.map_process_vads_subsections()
 
-		self.bit_divisions = [12] + [tup[1] for tup in self.context.layers['primary'].structure]
-		self.table_names = ["Phys"] + [tup[0] for tup in self.context.layers['primary'].structure]
+        self.bit_divisions = [12] + [tup[1] for tup in self.context.layers['primary'].structure]
+        self.table_names = ["Phys"] + [tup[0] for tup in self.context.layers['primary'].structure]
 
-	@classmethod
-	def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
-		# Since we're calling the plugin, make sure we have the plugin's requirements
-		return [requirements.TranslationLayerRequirement(name='primary',
-														 description='Memory layer for the kernel',
-														 architectures=["Intel32", "Intel64"]),
-				requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
-				requirements.StringRequirement(name='ADDRESS',
-											 description='Address to translate',
-											 optional=True),
-				requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(1, 0, 0)),
-				]
+    @classmethod
+    def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
+        # Since we're calling the plugin, make sure we have the plugin's requirements
+        return [requirements.TranslationLayerRequirement(name='primary',
+                                                         description='Memory layer for the kernel',
+                                                         architectures=["Intel32", "Intel64"]),
+                requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
+                requirements.StringRequirement(name='ADDRESS',
+                                             description='Address to translate',
+                                             optional=True),
+                requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(1, 0, 0)),
+                ]
 
-	def get_proc_pdbs(self):
-		"""
-	get all pdbs from _EPROCESS structure
-	"""
-		self.proc_pdbs = {}
-		self.pdb_task = {}
-		for task in pslist.PsList.list_processes(context = self.context,
-												 layer_name = self.config['primary'],
-												 symbol_table = self.config['nt_symbols']):
-			dtb = task.Pcb.DirectoryTableBase
+    def get_proc_pdbs(self):
+        """
+    get all pdbs from _EPROCESS structure
+    """
+        self.proc_pdbs = {}
+        self.pdb_task = {}
+        for task in pslist.PsList.list_processes(context = self.context,
+                                                 layer_name = self.config['primary'],
+                                                 symbol_table = self.config['nt_symbols']):
+            dtb = task.Pcb.DirectoryTableBase
 
-			# Support windows xp
-			if type(dtb) is objects.Array:
-				dtb = dtb[0]
-			self.proc_pdbs[dtb &~0xfff] = {}
-			self.pdb_task[dtb &~0xfff] = task
+            # Support windows xp
+            if type(dtb) is objects.Array:
+                dtb = dtb[0]
+            self.proc_pdbs[dtb &~0xfff] = {}
+            self.pdb_task[dtb &~0xfff] = task
 
-	def map_process_vads_subsections(self):
-		"""
-		get all vads and subsections from a processes
-		"""
-		self.subsections = {}
-		self.vads = {}
-		# check how to get subsection from a vad (according to the os versio)
+    def map_process_vads_subsections(self):
+        """
+        get all vads and subsections from a processes
+        """
+        self.subsections = {}
+        self.vads = {}
+        # check how to get subsection from a vad (according to the os versio)
 
-		# Go all over the processes and collect all the subsections.
-		for c_proc in pslist.PsList.list_processes(context = self.context,
-												   layer_name = self.config['primary'],
-												   symbol_table = self.config['nt_symbols']):
-			# Go all over vads.
-			for vad in c_proc.get_vad_root().traverse():
-				subsection = get_right_member(vad, ["Subsection"])
-				if not subsection and not self.context.symbol_space.has_symbol("nt_symbols1!KdCopyDataBlock") and not vad.vol.type_name.endswith("_SHORT"):
-					subsection = self.ntkrnlmp.object("_SUBSECTION", vad.vol.offset + vad.vol.size - self.ntkrnlmp.offset)
-				if subsection:
-					try:
-						seen_subs = []
-						# Walk the subsection list
-						while subsection not in seen_subs and subsection:
-							seen_subs.append(subsection)
-							start_addr = subsection.SubsectionBase.real
+        # Go all over the processes and collect all the subsections.
+        for c_proc in pslist.PsList.list_processes(context = self.context,
+                                                   layer_name = self.config['primary'],
+                                                   symbol_table = self.config['nt_symbols']):
+            # Go all over vads.
+            for vad in c_proc.get_vad_root().traverse():
+                subsection = get_right_member(vad, ["Subsection"])
+                if not subsection and not self.context.symbol_space.has_symbol("nt_symbols1!KdCopyDataBlock") and not vad.vol.type_name.endswith("_SHORT"):
+                    subsection = self.ntkrnlmp.object("_SUBSECTION", vad.vol.offset + vad.vol.size - self.ntkrnlmp.offset)
+                if subsection:
+                    try:
+                        seen_subs = []
+                        # Walk the subsection list
+                        while subsection not in seen_subs and subsection:
+                            seen_subs.append(subsection)
+                            start_addr = subsection.SubsectionBase.real
 
-							# Vads sould not be in userspace
-							if start_addr > self.HighestUserAddress:
+                            # Vads sould not be in userspace
+                            if start_addr > self.HighestUserAddress:
 
-								end_addr = start_addr + (subsection.PtesInSubsection * self.ntkrnlmp.get_type('_MMPTE').size)
-								range = (start_addr, end_addr)
-								if not range in self.subsections:
-									self.subsections[range] = []
-								self.subsections[range].append((c_proc, vad, subsection))
-							subsection = subsection.NextSubsection
-					except exceptions.InvalidAddressException:
-						pass
-					if not int(c_proc.UniqueProcessId) in self.vads:
-						self.vads[int(c_proc.UniqueProcessId)] = []
-					self.vads[int(c_proc.UniqueProcessId)].append((vad.get_start(), vad.get_end(),vad))
+                                end_addr = start_addr + (subsection.PtesInSubsection * self.ntkrnlmp.get_type('_MMPTE').size)
+                                range = (start_addr, end_addr)
+                                if not range in self.subsections:
+                                    self.subsections[range] = []
+                                self.subsections[range].append((c_proc, vad, subsection))
+                            subsection = subsection.NextSubsection
+                    except exceptions.InvalidAddressException:
+                        pass
+                    if not int(c_proc.UniqueProcessId) in self.vads:
+                        self.vads[int(c_proc.UniqueProcessId)] = []
+                    self.vads[int(c_proc.UniqueProcessId)].append((vad.get_start(), vad.get_end(),vad))
 
-	def get_subsection(self, addr):
-		"""
-		This function return a [_EPROCESS, _MMVAD, _SUBSECTION] from specific subsection address
-		"""
-		# Check if the subsection present
-		ranges = []
-		for range in self.subsections:
+    def get_subsection(self, addr):
+        """
+        This function return a [_EPROCESS, _MMVAD, _SUBSECTION] from specific subsection address
+        """
+        # Check if the subsection present
+        ranges = []
+        for range in self.subsections:
 
-			# Check if the subsection inside the range address
-			if addr > range[0] and addr < range[1]:
-				ranges.append(self.subsections[range])
+            # Check if the subsection inside the range address
+            if addr > range[0] and addr < range[1]:
+                ranges.append(self.subsections[range])
 
-		# Return all the subsection_info ranges in a list or empty list
-		return ranges
+        # Return all the subsection_info ranges in a list or empty list
+        return ranges
 
-	def ptov_hardware_pte(self, paddr):
-		"""
-		get ptov for hardware pte only.
+    def ptov_hardware_pte(self, paddr):
+        """
+        get ptov for hardware pte only.
 
-		Return:
-		(virtual_address, process name, pid, dtb)
-		"""
-		p_addr = paddr
-		physical_addresses = dict(Phys=p_addr)
-		phys_addresses_of_pte = {}
-		ptes = {}
-		proc = None
-		# Go all over the tables
-		for i, table_name in enumerate(self.table_names):
-			if not PFNInfo.is_pfn_valid(self.context, self.ntkrnlmp, p_addr >> 12):
-				return ('Invalid pfn, Translation failed..', 'Invalid pfn, Translation failed..')
-			c_pfn = self.ntkrnlmp.object("_MMPFN", self._pfndb + (int(p_addr >> 12) * self.size_of_pfn) - self.kvo)
-			pte = get_right_member(c_pfn, ["PteLong", "PteAddress"])
-			if i > 0:
-				physical_addresses[table_name] = ptes[self.table_names[i - 1]].vol.offset
-			p_addr = ((c_pfn.u4.PteFrame << 12) | (pte & 0xFFF))
-			phys_addresses_of_pte[table_name] = p_addr
-			ptes[table_name] = self.context.object(self._config['nt_symbols'] + constants.BANG + "_MMPTE", "memory_layer", p_addr)
-		dtb = p_addr & ~0xFFF
+        Return:
+        (virtual_address, process name, pid, dtb)
+        """
+        p_addr = paddr
+        physical_addresses = dict(Phys=p_addr)
+        phys_addresses_of_pte = {}
+        ptes = {}
+        proc = None
+        # Go all over the tables
+        for i, table_name in enumerate(self.table_names):
+            if not PFNInfo.is_pfn_valid(self.context, self.ntkrnlmp, p_addr >> 12):
+                return ('Invalid pfn, Translation failed..', 'Invalid pfn, Translation failed..')
+            c_pfn = self.ntkrnlmp.object("_MMPFN", self._pfndb + (int(p_addr >> 12) * self.size_of_pfn) - self.kvo)
+            pte = get_right_member(c_pfn, ["PteLong", "PteAddress"])
+            if i > 0:
+                physical_addresses[table_name] = ptes[self.table_names[i - 1]].vol.offset
+            p_addr = ((c_pfn.u4.PteFrame << 12) | (pte & 0xFFF))
+            phys_addresses_of_pte[table_name] = p_addr
+            ptes[table_name] = self.context.object(self._config['nt_symbols'] + constants.BANG + "_MMPTE", "memory_layer", p_addr)
+        dtb = p_addr & ~0xFFF
 
-		# Get the process for this dtb.
-		if dtb in self.proc_pdbs:
-			proc = self.pdb_task[dtb]
-		virtual_address = 0
-		start_of_page_table = dtb
-		size_of_pte = self.ntkrnlmp.get_type("_MMPTE").size
+        # Get the process for this dtb.
+        if dtb in self.proc_pdbs:
+            proc = self.pdb_task[dtb]
+        virtual_address = 0
+        start_of_page_table = dtb
+        size_of_pte = self.ntkrnlmp.get_type("_MMPTE").size
 
-		# Get the va
-		for table_name, bit_division in reversed(list(zip(self.table_names, self.bit_divisions))):
-			pte = ptes[table_name]
-			virtual_address += (ptes[table_name].vol.offset - start_of_page_table) // size_of_pte
-			virtual_address <<= bit_division
-			start_of_page_table = pte.u.Hard.PageFrameNumber << 12
+        # Get the va
+        for table_name, bit_division in reversed(list(zip(self.table_names, self.bit_divisions))):
+            pte = ptes[table_name]
+            virtual_address += (ptes[table_name].vol.offset - start_of_page_table) // size_of_pte
+            virtual_address <<= bit_division
+            start_of_page_table = pte.u.Hard.PageFrameNumber << 12
 
-		virtual_address = self.context.layers['primary'].address_mask & virtual_address
-		virtual_address += paddr & 0xFFF
-		return virtual_address, proc
+        virtual_address = self.context.layers['primary'].address_mask & virtual_address
+        virtual_address += paddr & 0xFFF
+        return virtual_address, proc
 
-	def my_ptov_hardware_pte_x64(self, addr):
-		"""
-		get ptov for hardware pte only.
-		This function Work only for AMD64#
+    def my_ptov_hardware_pte_x64(self, addr):
+        """
+        get ptov for hardware pte only.
+        This function Work only for AMD64#
 
-		Return:
-		(virtual_address, process name, pid, dtb)
-		"""
-		va = int(addr) & 0xFFF	# page offset
-		proc = None
-		pfn_index = int(addr) >> 12
-		for i in range(4):
-			c_pfn = self.ntkrnlmp.object("_MMPFN", self._pfndb + (pfn_index * self.size_of_pfn) - self.kvo)
-			va += ((c_pfn.PteAddress.vol.offset & 0xFFF) // 8) << (12 + 9 * i)
-			pfn_index = c_pfn.u4.PteFrame
-			if int(c_pfn.u4.PteFrame) << 12 in self.proc_pdbs:
-				proc = self.pdb_task[int(c_pfn.u4.PteFrame) << 12]
-		return (hex(va), proc)
+        Return:
+        (virtual_address, process name, pid, dtb)
+        """
+        va = int(addr) & 0xFFF	# page offset
+        proc = None
+        pfn_index = int(addr) >> 12
+        for i in range(4):
+            c_pfn = self.ntkrnlmp.object("_MMPFN", self._pfndb + (pfn_index * self.size_of_pfn) - self.kvo)
+            va += ((c_pfn.PteAddress.vol.offset & 0xFFF) // 8) << (12 + 9 * i)
+            pfn_index = c_pfn.u4.PteFrame
+            if int(c_pfn.u4.PteFrame) << 12 in self.proc_pdbs:
+                proc = self.pdb_task[int(c_pfn.u4.PteFrame) << 12]
+        return (hex(va), proc)
 
-	def ptov_prototype_pte(self, addr):
-		"""
-		get ptov for prototype pte with file info.
+    def ptov_prototype_pte(self, addr):
+        """
+        get ptov for prototype pte with file info.
 
-		Return:
-		(virtual_address, file_name, offset, [_EPROCESS, _MMVAD, _SUBSECTION])
-		"""
-		pfn_index = int(addr) >> 12
-		pfn = self.ntkrnlmp.object("_MMPFN", self._pfndb + (pfn_index * self.size_of_pfn) - self.kvo)
-		page_offset = int(addr) & 0xfff
-		pte_address = pfn.PteAddress
-		original_pte = pfn.OriginalPte
-		subsection = self.ntkrnlmp.object("_SUBSECTION", int(original_pte.u.Subsect.SubsectionAddress) - self.kvo)
-		# Check if this is valid subsection
-		if subsection.has_valid_member('ControlArea') and subsection.ControlArea.has_valid_member("FilePointer"):
-			try:
-				file_name = subsection.ControlArea.FilePointer.dereference().cast('_FILE_OBJECT').file_name_with_device()
-			except exceptions.InvalidAddressException:
-				file_name = 'File Name address invalid (maybe paged out)'
-			file_offset = 0x1000 * (pte_address - subsection.SubsectionBase) // self.size_of_pte + (
-								subsection.StartingSector * 512) + page_offset
+        Return:
+        (virtual_address, file_name, offset, [_EPROCESS, _MMVAD, _SUBSECTION])
+        """
+        pfn_index = int(addr) >> 12
+        pfn = self.ntkrnlmp.object("_MMPFN", self._pfndb + (pfn_index * self.size_of_pfn) - self.kvo)
+        page_offset = int(addr) & 0xfff
+        pte_address = pfn.PteAddress
+        original_pte = pfn.OriginalPte
+        subsection = self.ntkrnlmp.object("_SUBSECTION", int(original_pte.u.Subsect.SubsectionAddress) - self.kvo)
+        # Check if this is valid subsection
+        if subsection.has_valid_member('ControlArea') and subsection.ControlArea.has_valid_member("FilePointer"):
+            try:
+                file_name = subsection.ControlArea.FilePointer.dereference().cast('_FILE_OBJECT').file_name_with_device()
+            except exceptions.InvalidAddressException:
+                file_name = 'File Name address invalid (maybe paged out)'
+            file_offset = 0x1000 * (pte_address - subsection.SubsectionBase) // self.size_of_pte + (
+                                subsection.StartingSector * 512) + page_offset
 
-			# The subsection currentry mapped (WS) to some process.
-			subsection_info = self.get_subsection(pte_address.real)
-			if subsection_info:
-				va_list = []
-				e_proc_list = []
-				# Go all over the range list
-				for sub_info in subsection_info:
+            # The subsection currentry mapped (WS) to some process.
+            subsection_info = self.get_subsection(pte_address.real)
+            if subsection_info:
+                va_list = []
+                e_proc_list = []
+                # Go all over the range list
+                for sub_info in subsection_info:
 
-					# Go for eack tuple
-					for e_proc, c_vad, _ in sub_info:
-						#e_proc, c_vad, _= sub_info[-1]	# COULD BE MORE THAN ONE PROCESS!!! CHANGE THIS #FIXME!!
-						relative_offset = (pte_address - c_vad.FirstPrototypePte) // self.size_of_pte
-						va = relative_offset * 0x1000 + c_vad.get_start() + page_offset
-						if va < self.HighestUserAddress or e_proc.UniqueProcessId == 4:
-							va_list.append(va)
-							e_proc_list.append(e_proc)
-			if subsection_info and va_list:
-				return (va_list, e_proc_list, file_name, hex(file_offset), subsection_info)
-			else:
-				# If the subsection_list empty (no owner)
-				additional_info = self.ptov_hardware_pte(addr)
-				return (additional_info[:2] + (file_name, file_offset, [[(None, None, subsection)]]))
+                    # Go for eack tuple
+                    for e_proc, c_vad, _ in sub_info:
+                        #e_proc, c_vad, _= sub_info[-1]	# COULD BE MORE THAN ONE PROCESS!!! CHANGE THIS #FIXME!!
+                        relative_offset = (pte_address - c_vad.FirstPrototypePte) // self.size_of_pte
+                        va = relative_offset * 0x1000 + c_vad.get_start() + page_offset
+                        if va < self.HighestUserAddress or e_proc.UniqueProcessId == 4:
+                            va_list.append(va)
+                            e_proc_list.append(e_proc)
+            if subsection_info and va_list:
+                return (va_list, e_proc_list, file_name, hex(file_offset), subsection_info)
+            else:
+                # If the subsection_list empty (no owner)
+                additional_info = self.ptov_hardware_pte(addr)
+                return (additional_info[:2] + (file_name, file_offset, [[(None, None, subsection)]]))
 
-		return self.ptov_hardware_pte(addr) + (None, None) + ([[(None, None, None)]],)
+        return self.ptov_hardware_pte(addr) + (None, None) + ([[(None, None, None)]],)
 
-	def ptov(self, physical_addr):
-		"""
+    def ptov(self, physical_addr):
+        """
 
-		Return:
-		va, owner, file_name, file_offset, [(proc, vad, subsection)]
-		"""
-		physical_addr = int(physical_addr, 16) if str(physical_addr).startswith("0x") else int(physical_addr)
-		pfn_index = physical_addr >> 12
-		if not PFNInfo.is_pfn_valid(self.context, self.ntkrnlmp, pfn_index):
-			return ('Invalid pfn, Translation failed..', 'Invalid pfn, Translation failed..') + (None, None) + ([[(None, None, None)]],)
-		pfn_entry = self.ntkrnlmp.object("_MMPFN", self._pfndb + (pfn_index * self.size_of_pfn) - self.kvo)
-		if int(get_right_member(pfn_entry,["u4.PrototypePte", "u3.e1.PrototypePte"])):
-			return self.ptov_prototype_pte(physical_addr)
-		else:
-			return self.ptov_hardware_pte(physical_addr) + (None, None) + ([[(None, None, None)]],)
+        Return:
+        va, owner, file_name, file_offset, [(proc, vad, subsection)]
+        """
+        physical_addr = int(physical_addr, 16) if str(physical_addr).startswith("0x") else int(physical_addr)
+        pfn_index = physical_addr >> 12
+        if not PFNInfo.is_pfn_valid(self.context, self.ntkrnlmp, pfn_index):
+            return ('Invalid pfn, Translation failed..', 'Invalid pfn, Translation failed..') + (None, None) + ([[(None, None, None)]],)
+        pfn_entry = self.ntkrnlmp.object("_MMPFN", self._pfndb + (pfn_index * self.size_of_pfn) - self.kvo)
+        if int(get_right_member(pfn_entry,["u4.PrototypePte", "u3.e1.PrototypePte"])):
+            return self.ptov_prototype_pte(physical_addr)
+        else:
+            return self.ptov_hardware_pte(physical_addr) + (None, None) + ([[(None, None, None)]],)
 
-	def _generator(self):
-		pa, va, owner, file_name, file_offset, additional_info = (hex(self._config.ADDRESS),) + self.ptov(self._config.ADDRESS)
-		if type(owner) is list:
-			owners = []
-			list_pid = []
-			for own in owner:
-				list_pid.append(str(int(own.UniqueProcessId)))
-				owners.append("{} ({})".format(objects.utility.array_to_string(own.ImageFileName), int(own.UniqueProcessId)))
-			owner = ", ".join(owners)
-			list_pid = ", ".join(list_pid)
-		elif owner and (type(owner) is not str):
-			list_pid = str(int(owner.UniqueProcessId))
-			owner = "{} ({})".format(objects.utility.array_to_string(owner.ImageFileName), int(owner.UniqueProcessId))
-		else:
-			list_pid = ''
-			owner = "There is no owner for this page"
+    def _generator(self):
+        pa, va, owner, file_name, file_offset, additional_info = (hex(self._config.ADDRESS),) + self.ptov(self._config.ADDRESS)
+        if type(owner) is list:
+            owners = []
+            list_pid = []
+            for own in owner:
+                list_pid.append(str(int(own.UniqueProcessId)))
+                owners.append("{} ({})".format(objects.utility.array_to_string(own.ImageFileName), int(own.UniqueProcessId)))
+            owner = ", ".join(owners)
+            list_pid = ", ".join(list_pid)
+        elif owner and (type(owner) is not str):
+            list_pid = str(int(owner.UniqueProcessId))
+            owner = "{} ({})".format(objects.utility.array_to_string(owner.ImageFileName), int(owner.UniqueProcessId))
+        else:
+            list_pid = ''
+            owner = "There is no owner for this page"
 
-		if type(va) is list:
-			va = ", ".join([hex(v) for v in va])
-		elif type(va) is int:
-			va = hex(va)
+        if type(va) is list:
+            va = ", ".join([hex(v) for v in va])
+        elif type(va) is int:
+            va = hex(va)
 
-		if not file_name:
-			file_name = '-'
-		if not file_offset:
-			file_offset = '-'
+        if not file_name:
+            file_name = '-'
+        if not file_offset:
+            file_offset = '-'
 
-		yield (0,(owner, list_pid, file_name, file_offset, pa, va))
+        yield (0,(owner, list_pid, file_name, file_offset, pa, va))
 
-	def run(self):
-		return renderers.TreeGrid([("Owner", str), ("Loading To", str), ("File Name", str), ("File Offset", str),
-								   ("Physical", str), ("Virtual", str)],
-								  self._generator())
+    def run(self):
+        return renderers.TreeGrid([("Owner", str), ("Loading To", str), ("File Name", str), ("File Offset", str),
+                                   ("Physical", str), ("Virtual", str)],
+                                  self._generator())
 
 class PFNInfo(interfaces.plugins.PluginInterface):
-	""" PFN related information """
-	_version = (1, 0, 0)
+    """ PFN related information """
+    _version = (1, 0, 0)
 
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self.kaddr_space = self.config['primary']
-		self._config = self.config
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.kaddr_space = self.config['primary']
+        self._config = self.config
 
-		self._config.ADDRESS = self._config.get("ADDRESS", None)
-		self._config.INDEX = self._config.get("INDEX", None)
-		self._config.PAGE = self._config.get("PAGE", None)
-		self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
-		self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
-											 layer_name=self.kaddr_space,
-											 offset=self.kvo)
+        self._config.ADDRESS = self._config.get("ADDRESS", None)
+        self._config.INDEX = self._config.get("INDEX", None)
+        self._config.PAGE = self._config.get("PAGE", None)
+        self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
+        self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
+                                             layer_name=self.kaddr_space,
+                                             offset=self.kvo)
 
-		self.size_of_pfn = self.ntkrnlmp.get_type("_MMPFN").size
-		_pointer_struct = struct.Struct("<Q") if self.ntkrnlmp.get_type('pointer').size == 8 else struct.Struct('I')
-		pfndb = int(_pointer_struct.unpack(self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmPfnDatabase').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
-		self.HighestUserAddress = int(_pointer_struct.unpack(self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmHighestUserAddress').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
-		self.file_path = urllib.request.url2pathname(self.context.config['automagic.LayerStacker.single_location'][file_slice:])
-		self.page_file_db = pfndb
-		self.get_pool_ranges()
-		self.pte_page_protection = {'0': 'MM_ZERO_ACCESS', '1': 'MM_READONLY', '2': 'MM_EXECUTE', '3': 'MM_EXECUTE_READ',
-		                            '4': 'MM_READWRITE', '5': 'MM_WRITECOPY', '6': 'MM_EXECUTE_READWRITE',
-		                            '7': 'MM_PROTECT_ACCESS', '8': 'MM_NOCACHE', '16': 'MM_GUARDPAGE',
-		                            '24': 'MM_PROTECT_SPECIAL', '4294967295': 'MM_INVALID_PROTECTION'}
-		if self._config.INDEX:
-			if self._config.INDEX.startswith('0x'):
-				self._config.INDEX = int(self._config.INDEX, 16)
-			self._config.ADDRESS = self.page_file_db + int(self._config.INDEX) * self.size_of_pfn
-		elif self._config.ADDRESS:
-			if self._config.ADDRESS.startswith('0x'):
-				self._config.ADDRESS = int(self._config.ADDRESS, 16)
-			self._config.INDEX = ((int(self._config.ADDRESS)) - self.page_file_db) // self.size_of_pfn
-		elif self._config.PAGE:
-			if self._config.PAGE.startswith('0x'):
-				self._config.PAGE = int(self._config.PAGE, 16)
-			self._config.INDEX = int(self._config.PAGE) >> 12
-			self._config.ADDRESS = self.page_file_db + int(self._config.INDEX) * self.size_of_pfn
+        self.size_of_pfn = self.ntkrnlmp.get_type("_MMPFN").size
+        _pointer_struct = struct.Struct("<Q") if self.ntkrnlmp.get_type('pointer').size == 8 else struct.Struct('I')
+        pfndb = int(_pointer_struct.unpack(self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmPfnDatabase').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
+        self.HighestUserAddress = int(_pointer_struct.unpack(self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmHighestUserAddress').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
+        self.file_path = urllib.request.url2pathname(self.context.config['automagic.LayerStacker.single_location'][file_slice:])
+        self.page_file_db = pfndb
+        self.get_pool_ranges()
+        self.pte_page_protection = {'0': 'MM_ZERO_ACCESS', '1': 'MM_READONLY', '2': 'MM_EXECUTE', '3': 'MM_EXECUTE_READ',
+                                    '4': 'MM_READWRITE', '5': 'MM_WRITECOPY', '6': 'MM_EXECUTE_READWRITE',
+                                    '7': 'MM_PROTECT_ACCESS', '8': 'MM_NOCACHE', '16': 'MM_GUARDPAGE',
+                                    '24': 'MM_PROTECT_SPECIAL', '4294967295': 'MM_INVALID_PROTECTION'}
+        if self._config.INDEX:
+            if self._config.INDEX.startswith('0x'):
+                self._config.INDEX = int(self._config.INDEX, 16)
+            self._config.ADDRESS = self.page_file_db + int(self._config.INDEX) * self.size_of_pfn
+        elif self._config.ADDRESS:
+            if self._config.ADDRESS.startswith('0x'):
+                self._config.ADDRESS = int(self._config.ADDRESS, 16)
+            self._config.INDEX = ((int(self._config.ADDRESS)) - self.page_file_db) // self.size_of_pfn
+        elif self._config.PAGE:
+            if self._config.PAGE.startswith('0x'):
+                self._config.PAGE = int(self._config.PAGE, 16)
+            self._config.INDEX = int(self._config.PAGE) >> 12
+            self._config.ADDRESS = self.page_file_db + int(self._config.INDEX) * self.size_of_pfn
 
 
-	@classmethod
-	def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
-		# Since we're calling the plugin, make sure we have the plugin's requirements
-		return [requirements.TranslationLayerRequirement(name='primary',
-														 description='Memory layer for the kernel',
-														 architectures=["Intel32", "Intel64"]),
-				requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
-				requirements.StringRequirement(name='ADDRESS',
-											   description='Address of pfn',
-											   optional=True),
-				requirements.StringRequirement(name='INDEX',
-											   description='Index of pfn',
-											   optional=True),
-				requirements.StringRequirement(name='PAGE',
-											   description='Page Physical Address',
-											   optional=True),
-				requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(1, 0, 0)),
-				]
+    @classmethod
+    def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
+        # Since we're calling the plugin, make sure we have the plugin's requirements
+        return [requirements.TranslationLayerRequirement(name='primary',
+                                                         description='Memory layer for the kernel',
+                                                         architectures=["Intel32", "Intel64"]),
+                requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
+                requirements.StringRequirement(name='ADDRESS',
+                                               description='Address of pfn',
+                                               optional=True),
+                requirements.StringRequirement(name='INDEX',
+                                               description='Index of pfn',
+                                               optional=True),
+                requirements.StringRequirement(name='PAGE',
+                                               description='Page Physical Address',
+                                               optional=True),
+                requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(1, 0, 0)),
+                ]
 
-	@classmethod
-	def is_pfn_valid(cls, context, nt, pfn_index):
-		"""
-		Return wheters this pfn index have a valid pfn or not
-		"""
-		try:
-			addr = nt.get_symbol('MiPfnBitMap').address
-			rtl = nt.object("_RTL_BITMAP", addr)
+    @classmethod
+    def is_pfn_valid(cls, context, nt, pfn_index):
+        """
+        Return wheters this pfn index have a valid pfn or not
+        """
+        try:
+            addr = nt.get_symbol('MiPfnBitMap').address
+            rtl = nt.object("_RTL_BITMAP", addr)
 
-			# Check if the page index not out of range
-			if rtl.SizeOfBitMap < pfn_index:
-				return False
+            # Check if the page index not out of range
+            if rtl.SizeOfBitMap < pfn_index:
+                return False
 
-			# Check if the page is valid
-			c_byte = context.layers['primary'].read(rtl.Buffer + (pfn_index >> 3), 1)[0]
-			if c_byte & (2 ** (pfn_index % 8)) == (2 ** (pfn_index % 8)):
-				return True
-			return False
-		except Exception as ex:
-			# Could be symbol error (in windows 10)
-			_pointer_struct = struct.Struct("<Q") if nt.get_type('pointer').size == 8 else struct.Struct('I')
-			kvo = context.layers['primary'].config["kernel_virtual_offset"]
-			pfndb = int(_pointer_struct.unpack(context.layers['primary'].read(nt.get_symbol('MmPfnDatabase').address + kvo, nt.get_type('pointer').size))[0])
-			pfn_entry = nt.object("_MMPFN", pfndb + (int(pfn_index) * nt.get_type("_MMPFN").size) - kvo)
-			try:
-				return pfn_entry.u4.PfnExists
-			except Exception:
-				return False
+            # Check if the page is valid
+            c_byte = context.layers['primary'].read(rtl.Buffer + (pfn_index >> 3), 1)[0]
+            if c_byte & (2 ** (pfn_index % 8)) == (2 ** (pfn_index % 8)):
+                return True
+            return False
+        except Exception as ex:
+            # Could be symbol error (in windows 10)
+            _pointer_struct = struct.Struct("<Q") if nt.get_type('pointer').size == 8 else struct.Struct('I')
+            kvo = context.layers['primary'].config["kernel_virtual_offset"]
+            pfndb = int(_pointer_struct.unpack(context.layers['primary'].read(nt.get_symbol('MmPfnDatabase').address + kvo, nt.get_type('pointer').size))[0])
+            pfn_entry = nt.object("_MMPFN", pfndb + (int(pfn_index) * nt.get_type("_MMPFN").size) - kvo)
+            try:
+                return pfn_entry.u4.PfnExists
+            except Exception:
+                return False
 
-	def get_pool_ranges(self):
-		class PoolDescriptor:
-			pass
-		self.pools = []
-		def get_pointer_from_object(nt, symbol_name, my_struct=None):
-			_pointer_struct = my_struct or (struct.Struct("<Q") if nt.get_type('pointer').size == 8 else struct.Struct('I'))
-			try:
-				return int(_pointer_struct.unpack(
-					nt.context.layers['primary'].read(nt.get_symbol(symbol_name).address + nt.offset,
-					                               nt.get_type('pointer').size))[0])
-			except Exception:
-				return None
+    def get_pool_ranges(self):
+        class PoolDescriptor:
+            pass
+        self.pools = []
+        def get_pointer_from_object(nt, symbol_name, my_struct=None):
+            _pointer_struct = my_struct or (struct.Struct("<Q") if nt.get_type('pointer').size == 8 else struct.Struct('I'))
+            try:
+                return int(_pointer_struct.unpack(
+                    nt.context.layers['primary'].read(nt.get_symbol(symbol_name).address + nt.offset,
+                                                   nt.get_type('pointer').size))[0])
+            except Exception:
+                return None
 
-		# Getting NonPagedPool.
-		# Windows XP :)
-		start_va = get_pointer_from_object(self.ntkrnlmp, 'MmNonPagedPoolStart')
-		end_va = get_pointer_from_object(self.ntkrnlmp, 'MmNonPagedPoolEnd')
+        # Getting NonPagedPool.
+        # Windows XP :)
+        start_va = get_pointer_from_object(self.ntkrnlmp, 'MmNonPagedPoolStart')
+        end_va = get_pointer_from_object(self.ntkrnlmp, 'MmNonPagedPoolEnd')
 
-		if not start_va:
-			start_va = get_pointer_from_object(self.ntkrnlmp, 'MiNonPagedPoolStartAligned')
+        if not start_va:
+            start_va = get_pointer_from_object(self.ntkrnlmp, 'MiNonPagedPoolStartAligned')
 
-		if not end_va:
-			bitmap_addr = get_pointer_from_object(self.ntkrnlmp, 'MiNonPagedPoolBitMap')
-			if bitmap_addr:
-				bitmap = self.ntkrnlmp.object('_RTL_BITMAP', bitmap_addr)
-				end_va = (start_va & self.context.layers['primary'].address_mask) + bitmap.SizeOfBitMap * 8 * 0x1000
+        if not end_va:
+            bitmap_addr = get_pointer_from_object(self.ntkrnlmp, 'MiNonPagedPoolBitMap')
+            if bitmap_addr:
+                bitmap = self.ntkrnlmp.object('_RTL_BITMAP', bitmap_addr)
+                end_va = (start_va & self.context.layers['primary'].address_mask) + bitmap.SizeOfBitMap * 8 * 0x1000
 
-		# Windows 10
-		if not start_va:
-			MiState = self.ntkrnlmp.object('_MI_SYSTEM_INFORMATION', get_pointer_from_object(self.ntkrnlmp, 'MiState'))
-			node_info = get_right_member(MiState, ['Hardware.SystemNodeInformation', 'SystemNodeInformation']).cast('_MI_SYSTEM_NODE_INFORMATION')
-			start_va = end_va = node_info.NonPagedPoolFirstVa & self.context.layers['primary'].address_mask
-			if hasattr(node_info, 'NonPagedPoolLastVa'):
-				end_va = node_info.NonPagedPoolLastVa & self.context.layers['primary'].address_mask
-			elif hasattr(node_info, 'NonPagedBitMap'):
-				bitmap = node_info.NonPagedBitMap
-				end_va = max(start_va, start_va + bitmap.SizeOfBitMap * 8)
+        # Windows 10
+        if not start_va:
+            MiState = self.ntkrnlmp.object('_MI_SYSTEM_INFORMATION', get_pointer_from_object(self.ntkrnlmp, 'MiState'))
+            node_info = get_right_member(MiState, ['Hardware.SystemNodeInformation', 'SystemNodeInformation']).cast('_MI_SYSTEM_NODE_INFORMATION')
+            start_va = end_va = node_info.NonPagedPoolFirstVa & self.context.layers['primary'].address_mask
+            if hasattr(node_info, 'NonPagedPoolLastVa'):
+                end_va = node_info.NonPagedPoolLastVa & self.context.layers['primary'].address_mask
+            elif hasattr(node_info, 'NonPagedBitMap'):
+                bitmap = node_info.NonPagedBitMap
+                end_va = max(start_va, start_va + bitmap.SizeOfBitMap * 8)
 
-		NonPagedPool = PoolDescriptor()
-		NonPagedPool.start_va = start_va & self.context.layers['primary'].address_mask
-		NonPagedPool.end_va = end_va
-		NonPagedPool.name = 'NonPagedPool'
-		self.pools.append(NonPagedPool)
+        NonPagedPool = PoolDescriptor()
+        NonPagedPool.start_va = start_va & self.context.layers['primary'].address_mask
+        NonPagedPool.end_va = end_va
+        NonPagedPool.name = 'NonPagedPool'
+        self.pools.append(NonPagedPool)
 
-		# --------------------------------------------------------------------------------#
+        # --------------------------------------------------------------------------------#
 
-		# Getting PagedPool.
-		# Windows XP :)
-		start_va = get_pointer_from_object(self.ntkrnlmp, 'MmPagedPoolStart')
+        # Getting PagedPool.
+        # Windows XP :)
+        start_va = get_pointer_from_object(self.ntkrnlmp, 'MmPagedPoolStart')
 
-		if not start_va:
-			start_va = get_pointer_from_object(self.ntkrnlmp, 'MiPagedPoolStart')
+        if not start_va:
+            start_va = get_pointer_from_object(self.ntkrnlmp, 'MiPagedPoolStart')
 
-		if start_va:
-			end_va = start_va + get_pointer_from_object(self.ntkrnlmp, 'MmSizeOfPagedPoolInBytes')
-		else:
-			end_va = get_pointer_from_object(self.ntkrnlmp, 'MmPagedPoolEnd')
-			addr = get_pointer_from_object(self.ntkrnlmp, 'MmPagedPoolInfo')
-			if addr:
-				try:
-					bitmap = self.ntkrnlmp('_MM_PAGED_POOL_INFO', addr).PagedPoolAllocationMap
-					start_va = end_va - (bitmap.SizeOfBitMap * 8 * 0x1000)
-				except Exception:
-					start_va = end_va - (get_pointer_from_object(self.ntkrnlmp, 'MmSizeOfPagedPoolInBytes'))#, struct.Struct("<Q"))) # unsinged long long
+        if start_va:
+            end_va = start_va + get_pointer_from_object(self.ntkrnlmp, 'MmSizeOfPagedPoolInBytes')
+        else:
+            end_va = get_pointer_from_object(self.ntkrnlmp, 'MmPagedPoolEnd')
+            addr = get_pointer_from_object(self.ntkrnlmp, 'MmPagedPoolInfo')
+            if addr:
+                try:
+                    bitmap = self.ntkrnlmp('_MM_PAGED_POOL_INFO', addr).PagedPoolAllocationMap
+                    start_va = end_va - (bitmap.SizeOfBitMap * 8 * 0x1000)
+                except Exception:
+                    start_va = end_va - (get_pointer_from_object(self.ntkrnlmp, 'MmSizeOfPagedPoolInBytes'))#, struct.Struct("<Q"))) # unsinged long long
 
-		if not start_va:
-			try:
-				MiState = self.ntkrnlmp.object('_MI_SYSTEM_INFORMATION', get_pointer_from_object(self.ntkrnlmp, 'MiState'))
-				dynamic_paged_pool = get_right_member(MiState, ['SystemVa.DynamicBitMapPagedPool', 'DynamicBitMapPagedPool']).cast(
-					'_MI_SYSTEM_NODE_INFORMATION')
-				start_va = dynamic_paged_pool.BaseVa
-				end_va = start_va + (dynamic_paged_pool.MaximumSize * 0x1000)
-			except Exception:
-				pass
+        if not start_va:
+            try:
+                MiState = self.ntkrnlmp.object('_MI_SYSTEM_INFORMATION', get_pointer_from_object(self.ntkrnlmp, 'MiState'))
+                dynamic_paged_pool = get_right_member(MiState, ['SystemVa.DynamicBitMapPagedPool', 'DynamicBitMapPagedPool']).cast(
+                    '_MI_SYSTEM_NODE_INFORMATION')
+                start_va = dynamic_paged_pool.BaseVa
+                end_va = start_va + (dynamic_paged_pool.MaximumSize * 0x1000)
+            except Exception:
+                pass
 
-		if not start_va:
-			if self.context.layers['primary'].metadata.get('architecture') == 'Intel32':
-				start_va = end_va = -1 # TODO add win7x86 support
-			else:
-				# windows 7 64 bit
-				start_va = 0xFFFFF8A000000000
-				end_va = 0xFFFFF8BFFFFFFFFF
+        if not start_va:
+            if self.context.layers['primary'].metadata.get('architecture') == 'Intel32':
+                start_va = end_va = -1 # TODO add win7x86 support
+            else:
+                # windows 7 64 bit
+                start_va = 0xFFFFF8A000000000
+                end_va = 0xFFFFF8BFFFFFFFFF
 
-		PagedPool = PoolDescriptor()
-		PagedPool.start_va = start_va & self.context.layers['primary'].address_mask
-		PagedPool.end_va = end_va & self.context.layers['primary'].address_mask
-		PagedPool.name = 'PagedPool'
-		self.pools.append(PagedPool)
+        PagedPool = PoolDescriptor()
+        PagedPool.start_va = start_va & self.context.layers['primary'].address_mask
+        PagedPool.end_va = end_va & self.context.layers['primary'].address_mask
+        PagedPool.name = 'PagedPool'
+        self.pools.append(PagedPool)
 
-		# --------------------------------------------------------------------------------#
+        # --------------------------------------------------------------------------------#
 
-		# Getting session PagedPool.
-		seen_ids = []
-		for proc in pslist.PsList.list_processes(context=self.context, layer_name=self.config['primary'], symbol_table=self.config['nt_symbols']):
-			proc_id = "Unknown"
-			try:
-				proc_id = proc.UniqueProcessId
+        # Getting session PagedPool.
+        seen_ids = []
+        for proc in pslist.PsList.list_processes(context=self.context, layer_name=self.config['primary'], symbol_table=self.config['nt_symbols']):
+            proc_id = "Unknown"
+            try:
+                proc_id = proc.UniqueProcessId
 
-				# create the session space object in the process' own layer.
-				# not all processes have a valid session pointer.
-				session_space = self.context.object(proc.get_symbol_table_name() + constants.BANG + "_MM_SESSION_SPACE",
-				                               layer_name=self.config['primary'],
-				                               offset=proc.Session)
+                # create the session space object in the process' own layer.
+                # not all processes have a valid session pointer.
+                session_space = self.context.object(proc.get_symbol_table_name() + constants.BANG + "_MM_SESSION_SPACE",
+                                               layer_name=self.config['primary'],
+                                               offset=proc.Session)
 
-				if session_space.SessionId in seen_ids:
-					continue
+                if session_space.SessionId in seen_ids:
+                    continue
 
-				PagedPool = PoolDescriptor()
-				PagedPool.start_va = session_space.PagedPoolStart & self.context.layers['primary'].address_mask
-				PagedPool.end_va = session_space.PagedPoolEnd & self.context.layers['primary'].address_mask
-				PagedPool.name = 'SessionPagedPool'
-				self.pools.append(PagedPool)
+                PagedPool = PoolDescriptor()
+                PagedPool.start_va = session_space.PagedPoolStart & self.context.layers['primary'].address_mask
+                PagedPool.end_va = session_space.PagedPoolEnd & self.context.layers['primary'].address_mask
+                PagedPool.name = 'SessionPagedPool'
+                self.pools.append(PagedPool)
 
-			except exceptions.InvalidAddressException:
-				vollog.log(
-					constants.LOGLEVEL_VVV,
-					"Process {} does not have a valid Session or a layer could not be constructed for it".format(
-						proc_id))
-				continue
+            except exceptions.InvalidAddressException:
+                vollog.log(
+                    constants.LOGLEVEL_VVV,
+                    "Process {} does not have a valid Session or a layer could not be constructed for it".format(
+                        proc_id))
+                continue
 
-			# save the layer if we haven't seen the session yet
-			seen_ids.append(session_space.SessionId)
+            # save the layer if we haven't seen the session yet
+            seen_ids.append(session_space.SessionId)
 
-	def va_in_pool(self, addr):
-		for pool_descriptor in self.pools:
-			if pool_descriptor.start_va < addr and pool_descriptor.end_va > addr:
-				return pool_descriptor.name
-		return  False
+    def va_in_pool(self, addr):
+        for pool_descriptor in self.pools:
+            if pool_descriptor.start_va < addr and pool_descriptor.end_va > addr:
+                return pool_descriptor.name
+        return  False
 
-	def get_physical_from_index(self, index):
-		return self.page_file_db + int(index)*self.size_of_pfn
+    def get_physical_from_index(self, index):
+        return self.page_file_db + int(index)*self.size_of_pfn
 
-	def get_pfn_from_page_address(self, page_address):
-		return self.get_physical_from_index(page_address >> 12)
+    def get_pfn_from_page_address(self, page_address):
+        return self.get_physical_from_index(page_address >> 12)
 
-	def get_page_address(self, pfn_address):
-		#print hex(pfn_address)
-		pfn_address = int(str(pfn_address).replace('L',''), 16) if type(pfn_address)=='str' else int(pfn_address)
-		return ((pfn_address - self.page_file_db)//self.size_of_pfn) << 12#^0xffff000000000000
+    def get_page_address(self, pfn_address):
+        #print hex(pfn_address)
+        pfn_address = int(str(pfn_address).replace('L',''), 16) if type(pfn_address)=='str' else int(pfn_address)
+        return ((pfn_address - self.page_file_db)//self.size_of_pfn) << 12#^0xffff000000000000
 
-	def pfn_info(self, pfn_address, va=None, pool=True):
+    def pfn_info(self, pfn_address, va=None, pool=True):
 
-		if va and str(va).startswith('0x'):
-			va = int(va, 16)
-		elif va:
-			va = int(va)
-		pfn_entry = self.ntkrnlmp.object("_MMPFN", int(pfn_address) - self.kvo)
+        if va and str(va).startswith('0x'):
+            va = int(va, 16)
+        elif va:
+            va = int(va)
+        pfn_entry = self.ntkrnlmp.object("_MMPFN", int(pfn_address) - self.kvo)
 
-		#try:
-		pool_tag_list = []
-		use = ''
-		file_name = 'None'
-		offset = 0
-		image = False
-		page_list = PAGES_LIST[int(pfn_entry.u3.e1.PageLocation)] if int(pfn_entry.u3.e1.PageLocation) in PAGES_LIST else str(pfn_entry.u3.e1.PageLocation)
-		priority = get_right_member(pfn_entry.u3, ['e1.Priority', 'e3.Priority']) if get_right_member(pfn_entry.u3, ['e1.Priority', 'e3.Priority']) !=None else "-"
-		reference = int(pfn_entry.u3.e2.ReferenceCount)
-		share_count = int(pfn_entry.u2.ShareCount)
-		page_color = int(get_right_member(pfn_entry, ["u4.PageColor", "u3.e1.PageColor"]))
-		pte_type = 'Prototype PTE' if int(get_right_member(pfn_entry,["u4.PrototypePte", "u3.e1.PrototypePte"])) else 'Hardware PTE'
-		#protection = self.pte_page_protection[4294967295] if protection not in self.pte_page_protection else self.pte_page_protection[protection]
+        #try:
+        pool_tag_list = []
+        use = ''
+        file_name = 'None'
+        offset = 0
+        image = False
+        page_list = PAGES_LIST[int(pfn_entry.u3.e1.PageLocation)] if int(pfn_entry.u3.e1.PageLocation) in PAGES_LIST else str(pfn_entry.u3.e1.PageLocation)
+        priority = get_right_member(pfn_entry.u3, ['e1.Priority', 'e3.Priority']) if get_right_member(pfn_entry.u3, ['e1.Priority', 'e3.Priority']) !=None else "-"
+        reference = int(pfn_entry.u3.e2.ReferenceCount)
+        share_count = int(pfn_entry.u2.ShareCount)
+        page_color = int(get_right_member(pfn_entry, ["u4.PageColor", "u3.e1.PageColor"]))
+        pte_type = 'Prototype PTE' if int(get_right_member(pfn_entry,["u4.PrototypePte", "u3.e1.PrototypePte"])) else 'Hardware PTE'
+        #protection = self.pte_page_protection[4294967295] if protection not in self.pte_page_protection else self.pte_page_protection[protection]
 
-		if hasattr(pfn_entry.OriginalPte.u.Hard, "NoExecute"):
-			protection = int(pfn_entry.OriginalPte.u.Hard.NoExecute)
-		else: # 32bit
-			protection = -1
-		if not va:
-			if pool:# and False: # file_handle.seek(page_addr) OverflowError: long too big to convert
-				page_addr = self.get_page_address(pfn_address)
-				file_handle = open(self.file_path, 'rb')
-				file_handle.seek(page_addr)
-				page_data = file_handle.read(0x1000) # Read Page Size.
-				file_handle.close()
+        if hasattr(pfn_entry.OriginalPte.u.Hard, "NoExecute"):
+            protection = int(pfn_entry.OriginalPte.u.Hard.NoExecute)
+        else: # 32bit (without awe) don't support NX bit
+            protection = -1
+        if not va:
+            if pool:# and False: # file_handle.seek(page_addr) OverflowError: long too big to convert
+                page_addr = self.get_page_address(pfn_address)
+                page_data = self.context.layers['memory_layer'].read(page_addr, 0x1000, True)
+                #file_handle = open(self.file_path, 'rb') # This only supported on raw memdump
+                #file_handle.seek(page_addr)
+                #page_data = file_handle.read(0x1000) # Read Page Size.
+                #file_handle.close()
 
-				# The data inside the page
-				if page_data:
+                # The data inside the page
+                if page_data:
 
-					# Check if ther is some pool tag inside that page
-					for pool_tag in POOL_TAGS:
-						if pool_tag.encode() in page_data:#use=pool
-							pool_tag_list.append(pool_tag)
-				else:
-					print('[-]empty page')
-			else:
-				use = 'Private \ Kernel \ Pool'
-			if use == '':
-				use = 'Private \ Kernel'
-		elif va > self.HighestUserAddress:
-			# "This is Kernel | pool"
-			test_pool = self.va_in_pool(va)
-			if test_pool:
-				use = test_pool
-				if pool:
-					page_addr = self.get_page_address(pfn_address)
-					file_handle = open(self.file_path, 'rb')
-					file_handle.seek(page_addr)
-					page_data = file_handle.read(0x1000)  # Read Page Size.
-					file_handle.close()
+                    # Check if ther is some pool tag inside that page
+                    for pool_tag in POOL_TAGS:
+                        if pool_tag.encode() in page_data:#use=pool
+                            pool_tag_list.append(pool_tag)
+                else:
+                    print('[-] Empty Page')
+            else:
+                use = 'Private \ Kernel \ Pool'
+            if use == '':
+                use = 'Private \ Kernel'
+        elif va > self.HighestUserAddress:
+            # "This is Kernel | pool"
+            test_pool = self.va_in_pool(va)
+            if test_pool:
+                use = test_pool
+                if pool:
+                    page_addr = self.get_page_address(pfn_address)
+                    file_handle = open(self.file_path, 'rb')
+                    file_handle.seek(page_addr)
+                    page_data = file_handle.read(0x1000)  # Read Page Size.
+                    file_handle.close()
 
-					# The data inside the page
-					if page_data:
+                    # The data inside the page
+                    if page_data:
 
-						# Check if ther is some pool tag inside that page
-						for pool_tag in POOL_TAGS:
-							if pool_tag.encode() in page_data:
-								pool_tag_list.append(pool_tag)
-			else:
-				use = 'Kernel'
-		else:
-			use = 'Private'
+                        # Check if ther is some pool tag inside that page
+                        for pool_tag in POOL_TAGS:
+                            if pool_tag.encode() in page_data:
+                                pool_tag_list.append(pool_tag)
+            else:
+                use = 'Kernel'
+        else:
+            use = 'Private'
 
-		# If there is no reference than mark this page as unused.
-		if pfn_entry.u3.e2.ReferenceCount == 0:
-			use += ", Unused"
+        # If there is no reference than mark this page as unused.
+        if pfn_entry.u3.e2.ReferenceCount == 0:
+            use += ", Unused"
 
-		# Try to find file pointer
-		cb_addr = int(pfn_entry.OriginalPte.u.Subsect.SubsectionAddress)
-		subsection = self.ntkrnlmp.object("_SUBSECTION", cb_addr - self.kvo)
-		if subsection.has_valid_member("ControlArea") and subsection.ControlArea.has_valid_member("FilePointer"):
-			use = 'Mapped File'
-			try:
-				file_name = subsection.ControlArea.FilePointer.dereference().cast('_FILE_OBJECT').file_name_with_device()
-			except exceptions.InvalidAddressException:
-				file_name = 'File Name address invalid (maybe paged out)'
+        # Try to find file pointer
+        cb_addr = int(pfn_entry.OriginalPte.u.Subsect.SubsectionAddress)
+        subsection = self.ntkrnlmp.object("_SUBSECTION", cb_addr - self.kvo)
+        if subsection.has_valid_member("ControlArea") and subsection.ControlArea.has_valid_member("FilePointer"):
+            use = 'Mapped File'
+            try:
+                file_name = subsection.ControlArea.FilePointer.dereference().cast('_FILE_OBJECT').file_name_with_device()
+            except exceptions.InvalidAddressException:
+                file_name = 'File Name address invalid (maybe paged out)'
 
-			# Try to get file offset and if its image.
-			ca = subsection.ControlArea
-			start = subsection.SubsectionBase
-			pte_address = pfn_entry.PteAddress
-			if ca.u.has_valid_member('Flags'):
-				if ca.u.Flags.has_valid_member('Image'):
-					if ca.u.Flags.Image:
-						image = True
-					else:
-						image = False
-				if ca.u.Flags.has_valid_member('File') and ca.u.Flags.File:
-					pte_size = self.ntkrnlmp.get_type("_MMPTE").size
-					offset = 0x1000 * (pte_address - start) // pte_size + (subsection.StartingSector * 512)
-		return(page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, offset, image, pool_tag_list)
+            # Try to get file offset and if its image.
+            ca = subsection.ControlArea
+            start = subsection.SubsectionBase
+            pte_address = pfn_entry.PteAddress
+            if ca.u.has_valid_member('Flags'):
+                if ca.u.Flags.has_valid_member('Image'):
+                    if ca.u.Flags.Image:
+                        image = True
+                    else:
+                        image = False
+                if ca.u.Flags.has_valid_member('File') and ca.u.Flags.File:
+                    pte_size = self.ntkrnlmp.get_type("_MMPTE").size
+                    offset = 0x1000 * (pte_address - start) // pte_size + (subsection.StartingSector * 512)
+        return(page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, offset, image, pool_tag_list)
 
-	def _generator(self):
-		if not self.is_pfn_valid(self.context, self.ntkrnlmp, int(self._config.INDEX)):
-			raise ('Invalid pfn, unable to get information about this page')
-		data = self.pfn_info(self._config.ADDRESS)
-		yield (0, (self._config.INDEX, self._config.ADDRESS) + data[:-1] + (str(data[-1:]),))
+    def _generator(self):
+        if not self.is_pfn_valid(self.context, self.ntkrnlmp, int(self._config.INDEX)):
+            raise ('Invalid pfn, unable to get information about this page')
+        data = self.pfn_info(self._config.ADDRESS)
+        yield (0, (self._config.INDEX, self._config.ADDRESS) + data[:-1] + (str(data[-1:]),))
 
-	def render_text(self, outfd, data):
-		if data[0] == 'Failed:':
-			outfd.write('Failed to get this pfn:\nPFNInfo:\nPFN Index: {} -> PFN Address: {}'.format(self._config.INDEX, self._config.ADDRESS))
-			return
-		index, va, page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, offset, image, pool_tag  = (self._config.INDEX, self._config.ADDRESS) + data
-		outfd.write("\nPFNInfo:\nPFN Index: {} -> PFN Address: {}\nPage_list: {}\nPriority: {}\nReference: {}\nShare Count: {}\nPage Color: {}\nPte Type: {}\nProtection: {}\nUse: {}\nFile Name: {}\nPool Tags:{}\n".format(index, va, page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, ''))
-		if len(pool_tag) > 0:
-			for i in pool_tag:
-				outfd.write('\t{}: {}'.format(i, POOL_TAGS[i]))
-
-	def run(self):
-		#self.render_text(sys.stdout, self._generator())
-
-		return renderers.TreeGrid([("PFN Index", str), ("PFN Address", int), ("Page List", str), ("Priority", int), ("Reference", int),
-								   ("Share Count", int), ("Page Color", int), ("Pte Type", str), ("NxBit", int), ("Use", str),
-								   ("File Name", str), ("Offset", int), ("Image", bool), ("Pool Tags", str)],
-								  self._generator())
+    def run(self):
+        return renderers.TreeGrid([("PFN Index", str), ("PFN Address", int), ("Page List", str), ("Priority", int), ("Reference", int),
+                                   ("Share Count", int), ("Page Color", int), ("Pte Type", str), ("NxBit", int), ("Use", str),
+                                   ("File Name", str), ("Offset", int), ("Image", bool), ("Pool Tags", str)],
+                                  self._generator())
 
 class RamMap(interfaces.plugins.PluginInterface):
-	"""Map Physical pages"""
-	_version = (1, 0, 0)
+    """Map Physical pages"""
+    _version = (1, 0, 0)
 
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self._config = self.config
-		self.file_path = urllib.request.url2pathname(self.context.config['automagic.LayerStacker.single_location'][file_slice:])
-		self._config.COLORED = self._config.get("COLORED", None)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._config = self.config
+        self.file_path = urllib.request.url2pathname(self.context.config['automagic.LayerStacker.single_location'][file_slice:])
+        self._config.COLORED = self._config.get("COLORED", None)
 
-		self._config.ADDRESS = self._config.get("ADDRESS", "0x1000")
-		if self._config.ADDRESS.startswith("0x"):
-			self._config.ADDRESS = int(self._config.ADDRESS, 16)
-		else:
-			self._config.ADDRESS = int(self._config.ADDRESS)
-		self._config.ADDRESS = self._config.ADDRESS &~ 0xFFF
+        self._config.ADDRESS = self._config.get("ADDRESS", None)
+        if not self._config.ADDRESS:
+            self._config.ADDRESS = 0
+        elif self._config.ADDRESS.startswith("0x"):
+            self._config.ADDRESS = int(self._config.ADDRESS, 16)
+        else:
+            self._config.ADDRESS = int(self._config.ADDRESS)
+        self._config.ADDRESS = self._config.ADDRESS &~ 0xFFF
 
-		self._config.SIZE = self._config.get("SIZE", None)
-		if not self._config.SIZE:
-			self._config.SIZE = os.path.getsize(self.file_path) - self._config.ADDRESS
-		elif self._config.SIZE.startswith("0x"):
-			self._config.SIZE = int(self._config.SIZE, 16)
-		else:
-			self._config.SIZE = int(self._config.SIZE)
+        self._config.SIZE = self._config.get("SIZE", None)
+        if not self._config.SIZE:
+            self._config.SIZE = os.path.getsize(self.file_path) - self._config.ADDRESS
+        elif self._config.SIZE.startswith("0x"):
+            self._config.SIZE = int(self._config.SIZE, 16)
+        else:
+            self._config.SIZE = int(self._config.SIZE)
 
-		self.kaddr_space = self.config['primary']
-		self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
-		self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
-										layer_name=self.kaddr_space,
-										offset=self.kvo)
-		self.kdbg = info.Info.get_kdbg_structure(self.context, self.config_path, 'primary', self.config['nt_symbols'])
+        self.kaddr_space = self.config['primary']
+        self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
+        self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
+                                        layer_name=self.kaddr_space,
+                                        offset=self.kvo)
+        self.kdbg = info.Info.get_kdbg_structure(self.context, self.config_path, 'primary', self.config['nt_symbols'])
 
-		self.get_pfn_info = PFNInfo(self.context.clone(), self.config_path)
-		self.get_pfn_info_clone = PFNInfo(self.context.clone(), self.config_path)
-		self.physical_to_virtual = P2V(self.context.clone(), self.config_path)#PtoV(context, self.config_path)
-		self.PageListSummary = {}
-		self.FileSummary = {}
-		self.PageSummary = []
+        self.get_pfn_info = PFNInfo(self.context.clone(), self.config_path)
+        self.get_pfn_info_clone = PFNInfo(self.context.clone(), self.config_path)
+        self.physical_to_virtual = P2V(self.context.clone(), self.config_path)#PtoV(context, self.config_path)
+        self.PageListSummary = {}
+        self.FileSummary = {}
+        self.PageSummary = []
 
-	@classmethod
-	def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
-		# Since we're calling the plugin, make sure we have the plugin's requirements
-		return [requirements.TranslationLayerRequirement(name='primary',
-														 description='Memory layer for the kernel',
-														 architectures=["Intel32", "Intel64"]),
-				requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
-				requirements.StringRequirement(name='ADDRESS',
-											 description='Address to translate',
-											 optional=True),
-				requirements.StringRequirement(name='SIZE',
-											   description='Length to translate',
-											   optional=True),
-				requirements.BooleanRequirement(name='COLORED',
-				                                description='Parse every directory under the root dir',
-				                                optional=True),
+    @classmethod
+    def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
+        # Since we're calling the plugin, make sure we have the plugin's requirements
+        return [requirements.TranslationLayerRequirement(name='primary',
+                                                         description='Memory layer for the kernel',
+                                                         architectures=["Intel32", "Intel64"]),
+                requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
+                requirements.StringRequirement(name='ADDRESS',
+                                             description='Address to translate',
+                                             optional=True),
+                requirements.StringRequirement(name='SIZE',
+                                               description='Length to translate',
+                                               optional=True),
+                requirements.BooleanRequirement(name='COLORED',
+                                                description='Parse every directory under the root dir',
+                                                optional=True),
 
-		        requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(1, 0, 0)),
-				]
+                requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(1, 0, 0)),
+                ]
 
-	def file_exp_builder(self, c_dict, path_list, data):
+    def file_exp_builder(self, c_dict, path_list, data):
 
-		if len(path_list) > 0:
-			value = path_list.pop(0)
-			if value in c_dict:
-				self.file_exp_builder(c_dict[value], path_list, data)
-			else:
-				c_dict[value] = {}
-				self.file_exp_builder(c_dict[value], path_list, data)
-		else:
-			# For the filesummary: view all the pages inside the file.
-			if "|properties|" in c_dict:
-				c_dict["|properties|"] = (data[0], c_dict["|properties|"][1] + 0x1000)
-			else:
-				c_dict["|properties|"] = data
+        if len(path_list) > 0:
+            value = path_list.pop(0)
+            if value in c_dict:
+                self.file_exp_builder(c_dict[value], path_list, data)
+            else:
+                c_dict[value] = {}
+                self.file_exp_builder(c_dict[value], path_list, data)
+        else:
+            # For the filesummary: view all the pages inside the file.
+            if "|properties|" in c_dict:
+                c_dict["|properties|"] = (data[0], c_dict["|properties|"][1] + 0x1000)
+            else:
+                c_dict["|properties|"] = data
 
-	def xrange_big(self, start, end, step):
-		while start < end:
-			yield start
-			start += step
+    def xrange_big(self, start, end, step):
+        while start < end:
+            yield start
+            start += step
 
-	def calculate(self):
-		start_range = self._config.ADDRESS + 0x100000 if 0x100000 < self._config.SIZE else self._config.SIZE
-		self.add_data(self._config.ADDRESS, start_range)
+    def _generator(self):
+        start_range = self._config.ADDRESS + 0x100000 if 0x100000 < self._config.SIZE else self._config.SIZE
+        self.add_data(self._config.ADDRESS, start_range)
 
-	def add_data(self, start, end, page_size=0x1000):
-		failed_count = 0
-		for addr in self.xrange_big(start, end, page_size):
-			#print(addr)
-			va, owner, file_name, file_offset, additional_info = self.physical_to_virtual.ptov(addr)#self.physical_to_virtual.ptov(addr)
-			if va == 'Invalid pfn, Translation failed..':
-				self.PageSummary.append((hex(addr), '', 'Invalid / Unused / Hardware /', '', '', '', '', '', '', '',''))
-				continue
-			in_vad = ''
-			if type(owner) is list:
-				for e_proc_index in range(len(owner)):
-					p = owner[e_proc_index]
-					c_va = va[e_proc_index]
-					if int(p.UniqueProcessId) in self.physical_to_virtual.vads:
-						for start_range, end_range, c_vad in self.physical_to_virtual.vads[int(p.UniqueProcessId)]:
-							if c_va > start_range and c_va < end_range:
-								in_vad += ', {}'.format(c_vad.get_protection(vadinfo.VadInfo.protect_values(self.context, self.kaddr_space, self.config['nt_symbols']),vadinfo.winnt_protections))
-								break
-						else:
-							in_vad += ', False'
-					else:
-						in_vad += ', False'
-				in_vad = in_vad[2:]
-				pids = [str(int(p.UniqueProcessId)) for p in owner]
-			elif owner:
-				pids = [objects.utility.array_to_string(owner.ImageFileName), owner.UniqueProcessId]
-				if int(owner.UniqueProcessId) in self.physical_to_virtual.vads:
-					for start_range, end_range, c_vad in self.physical_to_virtual.vads[int(owner.UniqueProcessId)]:
-						if va > start_range and va < end_range:
-							in_vad = c_vad.get_protection(vadinfo.VadInfo.protect_values(self.context, self.kaddr_space, self.config['nt_symbols']),vadinfo.winnt_protections)
-							break
-					else:
-						in_vad = 'False'
-				else:
-					in_vad = 'False'
-			else:
-				pids = ''
+    def add_data(self, start, end, page_size=0x1000):
+        failed_count = 0
+        for addr in self.xrange_big(start, end, page_size):
+            #print(addr)
+            va, owner, file_name, file_offset, additional_info = self.physical_to_virtual.ptov(addr)#self.physical_to_virtual.ptov(addr)
+            if va == 'Invalid pfn, Translation failed..':
+                self.PageSummary.append((hex(addr), '', 'Invalid / Unused / Hardware /', '', '', '', '', '', '', '',''))
+                continue
+            in_vad = ''
+            if type(owner) is list:
+                for e_proc_index in range(len(owner)):
+                    p = owner[e_proc_index]
+                    c_va = va[e_proc_index]
+                    if int(p.UniqueProcessId) in self.physical_to_virtual.vads:
+                        for start_range, end_range, c_vad in self.physical_to_virtual.vads[int(p.UniqueProcessId)]:
+                            if c_va > start_range and c_va < end_range:
+                                in_vad += ', {}'.format(c_vad.get_protection(vadinfo.VadInfo.protect_values(self.context, self.kaddr_space, self.config['nt_symbols']),vadinfo.winnt_protections))
+                                break
+                        else:
+                            in_vad += ', False'
+                    else:
+                        in_vad += ', False'
+                in_vad = in_vad[2:]
+                pids = [str(int(p.UniqueProcessId)) for p in owner]
+            elif owner:
+                pids = [objects.utility.array_to_string(owner.ImageFileName), owner.UniqueProcessId]
+                if int(owner.UniqueProcessId) in self.physical_to_virtual.vads:
+                    for start_range, end_range, c_vad in self.physical_to_virtual.vads[int(owner.UniqueProcessId)]:
+                        if va > start_range and va < end_range:
+                            in_vad = c_vad.get_protection(vadinfo.VadInfo.protect_values(self.context, self.kaddr_space, self.config['nt_symbols']),vadinfo.winnt_protections)
+                            break
+                    else:
+                        in_vad = 'False'
+                else:
+                    in_vad = 'False'
+            else:
+                pids = ''
 
-			pfn_addr = self.get_pfn_info.get_physical_from_index(addr >> 12)
+            pfn_addr = self.get_pfn_info.get_physical_from_index(addr >> 12)
 
-			if type(va) is list and len(va) > 0 :
-				pfn_info = self.get_pfn_info.pfn_info(pfn_addr, va=max(va), pool=False)
-				va = [hex(v) for v in va]
-			else:
-				pfn_info = self.get_pfn_info.pfn_info(pfn_addr, va=va, pool=False)
-				va = hex(va)
+            if type(va) is list and len(va) > 0 :
+                pfn_info = self.get_pfn_info.pfn_info(pfn_addr, va=max(va), pool=False)
+                va = [hex(v) for v in va]
+            else:
+                pfn_info = self.get_pfn_info.pfn_info(pfn_addr, va=va, pool=False)
+                va = hex(va)
 
-			failed_count = 0
-			(page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, offset, image, pool_tag_list) = pfn_info
-			if type(file_name) != renderers.UnreadableValue and file_name and file_name != 'None' and file_name != 'File Name address invalid (maybe paged out)':
-				file_type = file_name.split('.')
-				data = (file_type[-1] if len(file_type) > 1 else '', 0x1000)
-				self.file_exp_builder(self.FileSummary, file_name[1:].split('\\'), data)
+            failed_count = 0
+            (page_list, priority, reference, share_count, page_color, pte_type, protection, use, file_name, offset, image, pool_tag_list) = pfn_info
+            if type(file_name) != renderers.UnreadableValue and file_name and file_name != 'None' and file_name != 'File Name address invalid (maybe paged out)':
+                file_type = file_name.split('.')
+                data = (file_type[-1] if len(file_type) > 1 else '', 0x1000)
+                self.file_exp_builder(self.FileSummary, file_name[1:].split('\\'), data)
 
-			data = (hex(addr), page_list, use, priority, image, hex(offset)  or '', file_name or '',pids, va, protection, in_vad)
+            data = (hex(addr), page_list, use, priority, image, hex(offset)  or '', file_name or '',pids, va, protection, in_vad)
 
-			self.PageSummary.append(data)
+            self.PageSummary.append(data)
 
-	def run(self):
-		self.render_text(sys.stdout, self.calculate())
+    def run(self):
+        self.render_ui(self._generator())
 
-	def render_text(self, outfd, data):
-		global app
-		global file_path
-		pages_dict = {'MmBadPagesDetected':self.kdbg.MmBadPagesDetected,
-		'MmModifiedPageListHead':self.kdbg.MmModifiedPageListHead,
-		'MmResidentAvailablePages':self.kdbg.MmResidentAvailablePages,
-		'MmFreePageListHead':self.kdbg.MmFreePageListHead,
-		'MmStandbyPageListHead': self.kdbg.MmStandbyPageListHead,
-		'MmModifiedNoWritePageListHead': self.kdbg.MmModifiedNoWritePageListHead,
-		'MmZeroedPageListHead':self.kdbg.MmZeroedPageListHead}
-		for page_list in pages_dict:
-			try:
-				pfnlist = self.ntkrnlmp.object('_MMPFNLIST', pages_dict[page_list] - self.kvo)
-				self.PageListSummary[page_list] = int(pfnlist.Total)
-			except exceptions.InvalidAddressException:
-				self.PageListSummary[page_list] = "-"
+    def render_ui(self, data):
+        global app
+        global file_path
+        pages_dict = {'MmBadPagesDetected':self.kdbg.MmBadPagesDetected,
+        'MmModifiedPageListHead':self.kdbg.MmModifiedPageListHead,
+        'MmResidentAvailablePages':self.kdbg.MmResidentAvailablePages,
+        'MmFreePageListHead':self.kdbg.MmFreePageListHead,
+        'MmStandbyPageListHead': self.kdbg.MmStandbyPageListHead,
+        'MmModifiedNoWritePageListHead': self.kdbg.MmModifiedNoWritePageListHead,
+        'MmZeroedPageListHead':self.kdbg.MmZeroedPageListHead}
+        for page_list in pages_dict:
+            try:
+                pfnlist = self.ntkrnlmp.object('_MMPFNLIST', pages_dict[page_list] - self.kvo)
+                self.PageListSummary[page_list] = int(pfnlist.Total)
+            except exceptions.InvalidAddressException:
+                self.PageListSummary[page_list] = "-"
 
-		file_path = urllib.request.url2pathname(self.context.config['automagic.LayerStacker.single_location'][file_slice:])
-		app = MemoryInformation(self.PageListSummary, self.PageSummary, self.FileSummary, self.get_pfn_info_clone)
-		app.title("Memory Information")
-		app.geometry("700x450")
-		app.tk.call('tk', 'scaling', 1.4)
-		self.style = s = ThemedStyle(app) if has_themes else tkinter.ttk.Style()
-		s.layout("Tab",[('Notebook.tab', {'sticky': 'nswe', 'children':
-			[('Notebook.padding', {'side': 'top', 'sticky': 'nswe', 'children':
-				[('Notebook.label', {'side': 'top', 'sticky': ''})],
-								   })],
-										  })])
-		def fixed_map(option):
-			# Returns the style map for 'option' with any styles starting with
-			# ("!disabled", "!selected", ...) filtered out
+        file_path = urllib.request.url2pathname(self.context.config['automagic.LayerStacker.single_location'][file_slice:])
+        app = MemoryInformation(self.PageListSummary, self.PageSummary, self.FileSummary, self.get_pfn_info_clone)
+        app.title("Memory Information")
+        app.geometry("700x450")
+        app.tk.call('tk', 'scaling', 1.4)
+        self.style = s = ThemedStyle(app) if has_themes else tkinter.ttk.Style()
+        s.layout("Tab",[('Notebook.tab', {'sticky': 'nswe', 'children':
+            [('Notebook.padding', {'side': 'top', 'sticky': 'nswe', 'children':
+                [('Notebook.label', {'side': 'top', 'sticky': ''})],
+                                   })],
+                                          })])
+        def fixed_map(option):
+            # Returns the style map for 'option' with any styles starting with
+            # ("!disabled", "!selected", ...) filtered out
 
-			# style.map() returns an empty list for missing options, so this should
-			# be future-safe
-			return [elm for elm in s.map("Treeview", query_opt=option)
-					if elm[:2] != ("!disabled", "!selected")]
-		s.map("Treeview",
-				  foreground=fixed_map("foreground"),
-				  background=fixed_map("background"))
+            # style.map() returns an empty list for missing options, so this should
+            # be future-safe
+            return [elm for elm in s.map("Treeview", query_opt=option)
+                    if elm[:2] != ("!disabled", "!selected")]
+        s.map("Treeview",
+                  foreground=fixed_map("foreground"),
+                  background=fixed_map("background"))
 
-		def on_exit(none=None):
-			'''
-			Exit popup
-			:param none: None (support event)
-			:return: None
-			'''
-			if messagebox.askokcancel("Quit",
-									  "Do you really wish to quit?"):
-				app.destroy()
-				os._exit(1)
-				sys.exit()
-		app.protocol("WM_DELETE_WINDOW", on_exit)
+        def on_exit(none=None):
+            '''
+            Exit popup
+            :param none: None (support event)
+            :return: None
+            '''
+            if messagebox.askokcancel("Quit",
+                                      "Do you really wish to quit?"):
+                app.destroy()
+                os._exit(1)
+                sys.exit()
+        app.protocol("WM_DELETE_WINDOW", on_exit)
 
-		threading.Thread(target=self.add_data, args=(self._config.ADDRESS+0x100000, self._config.ADDRESS+0x100000 + self._config.SIZE)).start()
+        threading.Thread(target=self.add_data, args=(self._config.ADDRESS+0x100000, self._config.ADDRESS+0x100000 + self._config.SIZE)).start()
 
-		def insert_fast(self, data, index_start, index_end, color):
-			for index_item in range(index_start, index_end):
-				item = data[index_item]
-				self.data.append(item)
-				#try:
-				# Mark all executable pages that marked in vad as non executed, Exclude system (its not really use vad).
-				if item[-2]!='' and (not int(item[-2])) and ('EXECUTE' not in item[-1] and item[-1] != 'False' ) and item[7] != ['System', 4]:
-					c_tag = ('vad_conflict',)
-				# Mark all non files executable pages.
-				elif item[-2]!='' and ( not int(item[-2])) and item[2] != 'Mapped File':
-					c_tag = ('no_file_execute',)
-				# Mark all executable pages that mark dont presend in the vad (exclude system as well)
-				elif item[-2]!='' and ( not int(item[-2])) and 'EXECUTE' not in item[-1] and item[7] != ['System', 4]:
-					c_tag = ('execute_no_vad',)
-				# Mark all non execute pages that presend in vad as execute (page protection changes..)
-				elif item[-2]!='' and int(item[-2]) and 'EXECUTE' in item[-1] and (any (iii != "PAGE_EXECUTE_WRITECOPY" for iii in item[-1].split(', '))  or item[4] != True):
-					c_tag = ('ntbit_conflict',)
-				# To insert onlly COLORED pages.
-				elif color:
-					continue
-				else:
-					c_tag = item[self.text_by_item]
+        def insert_fast(self, data, index_start, index_end, color):
+            for index_item in range(index_start, index_end):
+                item = data[index_item]
+                self.data.append(item)
+                #try:
+                # Mark all executable pages that marked in vad as non executed, Exclude system (its not really use vad).
+                if item[-2]!='' and (not int(item[-2])) and ('EXECUTE' not in item[-1] and item[-1] != 'False' ) and item[7] != ['System', 4]:
+                    c_tag = ('vad_conflict',)
+                # Mark all non files executable pages.
+                elif item[-2]!='' and ( not int(item[-2])) and item[2] != 'Mapped File':
+                    c_tag = ('no_file_execute',)
+                # Mark all executable pages that mark dont presend in the vad (exclude system as well)
+                elif item[-2]!='' and ( not int(item[-2])) and 'EXECUTE' not in item[-1] and item[7] != ['System', 4]:
+                    c_tag = ('execute_no_vad',)
+                # Mark all non execute pages that presend in vad as execute (page protection changes..)
+                elif item[-2]!='' and int(item[-2]) and 'EXECUTE' in item[-1] and (any (iii != "PAGE_EXECUTE_WRITECOPY" for iii in item[-1].split(', '))  or item[4] != True):
+                    c_tag = ('ntbit_conflict',)
+                # To insert onlly COLORED pages.
+                elif color:
+                    continue
+                else:
+                    c_tag = item[self.text_by_item]
 
-				self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
-					#self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=item[self.text_by_item])
-				#except (Exception, tk.TclError):
-				#	print('failed to insert {} to the table'.format(item[self.text_by_item]))
+                self.tree.insert('', END, values=item, text=item[self.text_by_item], tags=c_tag)
+                    #self.visual_drag.insert('', END, values=item, text=item[self.text_by_item], tags=item[self.text_by_item])
+                #except (Exception, tk.TclError):
+                #	print('failed to insert {} to the table'.format(item[self.text_by_item]))
 
-		# Insert init items, and set default color
-		app.frames['PhysicalRanges'].tree.insert_fast = insert_fast
-		app.frames['PhysicalRanges'].tree.tree.tag_configure('vad_conflict', background='red')
-		app.frames['PhysicalRanges'].tree.tree.tag_configure('no_file_execute', background='orange')
-		app.frames['PhysicalRanges'].tree.tree.tag_configure('execute_no_vad', background='yellow')
-		app.frames['PhysicalRanges'].tree.tree.tag_configure('ntbit_conflict', background='purple')
-		last_inserted = to_insert_index = 0
-		while True:
-			app.update()
-			app.update_idletasks()
-			time.sleep(0.01)
-			to_insert_index = len(self.PageSummary)# if to_insert_index - last_inserted < 25 else last_inserted+25
-			app.frames['PhysicalRanges'].tree.insert_fast(app.frames['PhysicalRanges'].tree, self.PageSummary, last_inserted,to_insert_index, self._config.COLORED)
-			last_inserted = to_insert_index
-		app.destroy()
-		os._exit(1)
-		sys.exit()
+        # Insert init items, and set default color
+        app.frames['PhysicalRanges'].tree.insert_fast = insert_fast
+        app.frames['PhysicalRanges'].tree.tree.tag_configure('vad_conflict', background='red')
+        app.frames['PhysicalRanges'].tree.tree.tag_configure('no_file_execute', background='orange')
+        app.frames['PhysicalRanges'].tree.tree.tag_configure('execute_no_vad', background='yellow')
+        app.frames['PhysicalRanges'].tree.tree.tag_configure('ntbit_conflict', background='purple')
+        last_inserted = to_insert_index = 0
+        while True:
+            app.update()
+            app.update_idletasks()
+            time.sleep(0.01)
+            to_insert_index = len(self.PageSummary)# if to_insert_index - last_inserted < 25 else last_inserted+25
+            app.frames['PhysicalRanges'].tree.insert_fast(app.frames['PhysicalRanges'].tree, self.PageSummary, last_inserted,to_insert_index, self._config.COLORED)
+            last_inserted = to_insert_index
+        app.destroy()
+        os._exit(1)
+        sys.exit()
 
 #region sc Start
 # Help volatility users Do not use this classes..
 class p2v(P2V):
-	pass
+    pass
 
 class pfninfo(PFNInfo):
-	pass
+    pass
 
 class rammap(RamMap):
-	pass
+    pass
 #endregion sc End

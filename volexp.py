@@ -101,7 +101,7 @@ except ImportError:
 # all the globals kept here.
 # also the icon images save here encoded with base-64 to make the plugin only one file.
 
-file_slice = 8 if sys.platform == 'win32' else 5
+file_slice = 5 if sys.platform != 'win32' else 8
 right_click_event = '<Button-2>' if sys.platform == 'darwin' else '<Button-3>'
 
 ICON = \
@@ -2014,7 +2014,7 @@ def run_struct_analyze(struct_type, address, app=None, pid=4, as_thread=True, wr
 
     # Unable to parse an object
     try:
-        my_sa.calculate()
+        my_sa._generator()
     except Exception as ex:
         print('[-] Failed on parsing this object..', ex)
 
@@ -2631,6 +2631,49 @@ def virus_total(hash, process_name, pid, file_path, apikey=None):
     else:
         plugins_output[int(pid)].append(("VirusTotal", 'Virus Total dont know this hash -> {} (Try to upload this file (if you want) and then check for output)'.format(hash)))
     print('Done VirusTotal')
+
+def create_hex_dump_fast(name, data, row_len=16, window_width=1050, window_height=600):
+    """
+    This function extract all the strings and hexa data in a thread and than run the hexdump
+    that will minimize the UI freeze.
+    :param name: windows name
+    :param data: data
+    :param row_len: row len (int the hex view)
+    :return: None
+    """
+    global queue
+
+    # Make sure we dealing with bytes.
+    if type(data) is not bytes:
+        data = data.encode('utf-16-le', errors='replace')
+
+    # Create the hexa data
+    hex_data = []
+    ascii = []
+    hex_list = []
+    count = 0
+    for byte in data:
+        hex_list.append("{:02x}".format(byte))
+        ascii.append(chr(byte) if 0x20 < byte <= 0x7E else ".")
+        if (count % row_len) == row_len - 1:
+            hex_data.append((hex(count), "  ".join(hex_list[count - (row_len - 1):count + 1]),
+                             "".join(ascii[count - (row_len - 1):count + 1])))
+        count += 1
+
+    # Get the ascii and unicode data
+    ascii_data, unicode_data = get_ascii_unicode(data)
+
+    def create_hex_dump_ui(name, hex_data, ascii_data, unicode_data, row_len, window_width, window_height):
+        app = HexDump(name, hex_data, ascii_data, unicode_data, row_len)
+        app.title(name)
+        width = app.winfo_screenwidth() / 2
+        height = app.winfo_screenheight()
+        app.geometry('%dx%d+%d+%d' % (window_width, window_height, width * 0.5 - (window_width / 2), height * 0.5 - (window_height / 2)))
+
+    # Execute it in the main thread.
+    queue.put((MessagePopUp, ('Building the HexDump UI,\nthe program UI may freeze for a cuple of secondes - minutes (depends on the file size).', 5, root, "Please Wait!")))
+    queue.put((create_hex_dump_ui, (name, hex_data, ascii_data, unicode_data, row_len, window_width, window_height)))
+
 
 #endregion global fucntion
 
@@ -3840,13 +3883,15 @@ class memInfo(tk.Tk):
 
 class HexDump(tk.Toplevel):
 
-    def __init__(self,file_name, file_data, row_len, *args, **kwargs):
+    def __init__(self, file_name, hex_data, strings_data, unicode_data, row_len, *args, **kwargs):
         tk.Toplevel.__init__(self, *args, **kwargs)
         self.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
 
         self.row_len = row_len
         self.file_name = file_name
-        self.file_data = file_data
+        self.hex_data = hex_data
+        self.strings_data = strings_data
+        self.unicode_data = unicode_data
 
         tabcontroller = NoteBook(self)
         self.frames = {}
@@ -3869,11 +3914,10 @@ class HDStrings(Frame):
         self.controller = controller
         label = tk.Label(self, text="Strings", font=controller.title_font)
         label.pack(side="top", fill="x", pady=10)
-        data = get_ascii_unicode(self.controller.file_data)
-        self.strings_tree = TreeTable(self, headers=("Offset", "ASSCI"), data=data[0], resize=True)
-        self.strings_tree.tree['height'] = 22 if 22 < len(data) else len(data)
-        self.uni_tree = TreeTable(self, headers=("Offset", "UNICODE"), data=data[1], resize=True)
-        self.uni_tree.tree['height'] = 22 if 22 < len(data) else len(data)
+        self.strings_tree = TreeTable(self, headers=("Offset", "ASSCI"), data=self.controller.strings_data, resize=True)
+        self.strings_tree.tree['height'] = 11 if 11 < len(self.controller.strings_data) else len(self.controller.strings_data)
+        self.uni_tree = TreeTable(self, headers=("Offset", "UNICODE"), data=self.controller.unicode_data, resize=True)
+        self.uni_tree.tree['height'] = 11 if 11 < len(self.controller.unicode_data) else len(self.controller.unicode_data)
         self.strings_tree.pack(expand=YES, fill=BOTH)
         self.uni_tree.pack(expand=YES, fill=BOTH)
 
@@ -3884,18 +3928,7 @@ class HDHexDump(Frame):
         self.controller = controller
         label = tk.Label(self, text="HexDump", font=controller.title_font)
         label.pack(side="top", fill="x", pady=10)
-        data = []
-        ascii = []
-        hex_list = []
-        count = 0
-        for byte in self.controller.file_data:
-            hex_list.append("{:02x}".format(byte))
-            ascii.append(chr(byte) if 0x20 < byte <= 0x7E else ".")
-            if (count % self.controller.row_len) == self.controller.row_len -1:
-                data.append((hex(count), "  ".join(hex_list[count - (self.controller.row_len -1):count + 1]), "".join(ascii[count - (self.controller.row_len -1):count + 1])))
-            count += 1
-
-        self.values_table = TreeTable(self, headers=("Offset", "Hex", "Data"), data=data, resize=True)
+        self.values_table = TreeTable(self, headers=("Offset", "Hex", "Data"), data=self.controller.hex_data, resize=True)
         self.values_table.tree['height'] = 22
         self.values_table.pack(expand=YES, fill=BOTH)
 
@@ -4340,13 +4373,8 @@ class RegViewer(Frame):
         # If the data represent in hexa.
         else:
             file_data = data_info.encode('utf-16-le')
-            app = HexDump(file_name=key_name, file_data=file_data, row_len=16)
-            app.title('Value info ({})'.format(key_name))
-            window_width = 1050/2
-            window_height = 600
-            width = app.winfo_screenwidth()/2
-            height = app.winfo_screenheight()
-            app.geometry('%dx%d+%d+%d' % (window_width, window_height, width*0.5-(window_width/2), height*0.5-(window_height/2)))
+            threading.Thread(Target=create_hex_dump_fast, args=('Value info ({})'.format(key_name), file_data, 16, 525, 600)).start()
+
 
     def OpenWithoutSearch(self, event):
         '''
@@ -5307,18 +5335,7 @@ class FileExplorer(Frame):
                     data = file_mem[fm]
                     max_len = c_len
 
-            def create_hex_dump(clicked_file, file_mem):
-                # Spawn the hexdump window.
-                app = HexDump(clicked_file, file_mem, 16)
-                app.title(clicked_file)
-                window_width = 1050
-                window_height = 800
-                width = app.winfo_screenwidth()
-                height = app.winfo_screenheight()
-                app.geometry('%dx%d+%d+%d' % (
-                window_width, window_height, width * 0.5 - (window_width // 2), height * 0.5 - (window_height // 2)))
-
-            queue.put((create_hex_dump, (clicked_file, data.encode())))
+            create_hex_dump_fast(clicked_file, data, 16)
 
         except Exception as ex:
             print('exception:',ex)
@@ -8756,18 +8773,8 @@ class DllsTable(TreeTable):
             dump_file = objects.utility.array_to_string(task.ImageFileName) + str(
                 task.UniqueProcessId) + name
 
-            def create_hex_dump(dump_file, file_mem):
-                ''' This function display the HexDump '''
-                app = HexDump(dump_file, file_mem.getvalue(), 16)
-                app.title('{} ()'.format(dump_file, 'Memory' if mem else 'File'))
-                window_width = 1050
-                window_height = 750
-                width = app.winfo_screenwidth()
-                height = app.winfo_screenheight()
-                app.geometry('%dx%d+%d+%d' % (
-                window_width, window_height, width * 0.5 - (window_width // 2), height * 0.5 - (window_height // 2)))
+            create_hex_dump_fast('{} ()'.format(dump_file, 'Memory' if mem else 'File'), filedata.data.getvalue(), 16)
 
-            queue.put((create_hex_dump, (dump_file, filedata.data)))
         except Exception:
             def show_message_func():
                 messagebox.showerror("Error", "Unable to get this {} HexDump".format('memory' if mem else 'file'),
@@ -9211,31 +9218,31 @@ class ProcessesTable(TreeTable):
                 break
         proc_layer_name = task.add_process_layer()
 
-        #try:
-        peb = task.get_peb()
-        dos_header = df_conf.object(pe_table_name + constants.BANG + "_IMAGE_DOS_HEADER",
-                                    offset=peb.ImageBaseAddress,
-                                    layer_name=proc_layer_name)
-        filedata = interfaces.plugins.FileInterface("pid.{0}.{1:#x}.dmp".format(task.UniqueProcessId,
-                                                                                peb.ImageBaseAddress))
-        for offset, data in dos_header.reconstruct():
-            filedata.data.seek(offset)
-            filedata.data.write(data)
+        try:
+            peb = task.get_peb()
+            dos_header = df_conf.object(pe_table_name + constants.BANG + "_IMAGE_DOS_HEADER",
+                                        offset=peb.ImageBaseAddress,
+                                        layer_name=proc_layer_name)
+            filedata = interfaces.plugins.FileInterface("pid.{0}.{1:#x}.dmp".format(task.UniqueProcessId,
+                                                                                    peb.ImageBaseAddress))
+            for offset, data in dos_header.reconstruct():
+                filedata.data.seek(offset)
+                filedata.data.write(data)
 
-        # Check the hash else upload the file to virus total.
-        if vt_type == 'hash':
-            hash = sha256(filedata.data.getvalue()).hexdigest()
-            threading.Thread(target=virus_total, args=(hash, process_name, pid, file_path, api_key)).start()
-        elif vt_type == 'upload':
-            filedata.preferred_filename = volself._config.DUMP_DIR + r"\executableVT." + objects.utility.array_to_string(task.ImageFileName) + str(
-                task.UniqueProcessId) + ".exe"
-            volself.produce_file(filedata)
-            #os.remove(filedata.preferred_filename)
-            threading.Thread(target=upload_to_virus_total, args=(process_name, filedata.preferred_filename, api_key)).start()
-        #except Exception:
-        #	def show_message_func():
-        #		messagebox.showerror("Error", "Unable to get Virus total reasult (please check internet connection and validate the api key)", parent=self)
-        #	queue.put((show_message_func, ()))
+            # Check the hash else upload the file to virus total.
+            if vt_type == 'hash':
+                hash = sha256(filedata.data.getvalue()).hexdigest()
+                threading.Thread(target=virus_total, args=(hash, process_name, pid, file_path, api_key)).start()
+            elif vt_type == 'upload':
+                filedata.preferred_filename = volself._config.DUMP_DIR + r"\executableVT." + objects.utility.array_to_string(task.ImageFileName) + str(
+                    task.UniqueProcessId) + ".exe"
+                volself.produce_file(filedata)
+                #os.remove(filedata.preferred_filename)
+                threading.Thread(target=upload_to_virus_total, args=(process_name, filedata.preferred_filename, api_key)).start()
+        except Exception:
+            def show_message_func():
+                messagebox.showerror("Error", "Unable to get Virus total reasult (please check internet connection and validate the api key)", parent=self)
+            queue.put((show_message_func, ()))
 
     def run_struct_analyze(self, struct_type):
         ''' get address and sent to teal Struct Analyzer function. '''
@@ -9468,17 +9475,8 @@ class ProcessesTable(TreeTable):
 
             # Give a name to the dump file and dump it.
             dump_file = "executable." + objects.utility.array_to_string(task.ImageFileName) + str(task.UniqueProcessId) + ".exe"
-            def create_hex_dump(dump_file, file_mem):
-                ''' This function display the HexDump '''
-                app = HexDump(dump_file, file_mem.getvalue(), 16)
-                app.title('{} ()'.format(dump_file, 'Memory' if mem else 'File'))
-                window_width = 1050
-                window_height = 750
-                width = app.winfo_screenwidth()
-                height = app.winfo_screenheight()
-                app.geometry('%dx%d+%d+%d' % (window_width, window_height, width * 0.5 - (window_width // 2), height * 0.5 - (window_height // 2)))
 
-            queue.put((create_hex_dump, (dump_file, filedata.data)))
+            create_hex_dump_fast('{} ()'.format(dump_file, 'Memory' if mem else 'File'), filedata.data.getvalue(), 16)
 
         # Alert the user if the funciton fail
         except Exception:
@@ -9512,7 +9510,7 @@ class ProcessesTable(TreeTable):
                 task = c_task
                 break
 
-        addr_space = task.add_process_layer()
+        addr_space = task.process_layer = task.add_process_layer()
         stacks = {}
         heaps = {}
         heaps_segment = {}
@@ -9731,96 +9729,90 @@ class ProcessesTable(TreeTable):
             threading.Thread(target=run_struct_analyze, args=(struct_type, addr)).start()
 
 
-        def vad_dump(self, file_path=None):
+        def vad_dump(self, context, vad_addr, file_path=None):
             '''
             This function dump the vad to a file/ return the data
             :param self: treetable
             :param vad: vad
+            :param vad_addr: vad address
+            :param context: context
             :param file_path: file_path (optional)
             :return: data / file_path
             '''
-            item = self.main_t.tree.selection()[0]
-            vad_addr = self.main_t.tree.item(item)['values'][-1]
             self.self.lock.acquire()
 
             # Get the vad object
-            for vad in task.VadRoot.traverse():
-                if vad != None and vad.v() == vad_addr:
+            for vad in task.get_vad_root().traverse():
+                if vad != None and hex(vad.vol.offset) == vad_addr:
                     break
+
+            vad.Start = vad.get_start()
+            vad.End = vad.get_end()
+            vad.Length = vad.End - vad.Start
 
             if file_path:
                 file_path = '{}{}{}'.format(file_path, os.sep, 'vad_at_{}'.format(vad.Start))
                 fh = open(file_path, "wb")
                 offset = vad.Start
-                out_of_range = vad.Start + vad.Length
+                out_of_range = vad.End
                 while offset < out_of_range:
-                    to_read = min(constants.SCAN_BLOCKSIZE, out_of_range - offset)
-                    data = vad.obj_native_vm.zread(offset, to_read)
+                    to_read = min(0xa00000, out_of_range - offset)
+                    data = context.layers[task.process_layer].read(offset, to_read, True)
                     if not data:
                         break
                     fh.write(data)
                     offset += to_read
+                self.self.lock.release()
                 fh.close()
                 queue.put((messagebox.showinfo, ("Vad dump done.", "The vad (address {}) dump to disk: {}".format(vad.Start, file_path))))
             else:
-                return vad.obj_native_vm.zread(vad.Start, vad.Length)
+                mem_data = context.layers[task.process_layer].read(vad.Start, vad.Length, True)
+                self.self.lock.release()
+                return mem_data
 
-            self.self.lock.release()
-
-
-        def vad_dump_summon(self, file_path):
+        def vad_dump_summon(self, file_pathcontext):
             '''
             call the vad_dump in thread (so the gui dont freeze).
             :param self: treetable
             :param file_path: file_path
-            :return: None
-            '''
-            threading.Thread(target=vad_dump, args=(self, file_path)).start()
-            MessagePopUp('Data loading in the background\nThis will going to take a while because it\'s go all over the memory data', 3, root)
-            time.sleep(1)
-
-        def vad_hexdump(self, file_data):
-            '''
-            Display a hexdump of the vad
-            :param self: treetable
+            :param context: context
             :return: None
             '''
             item = self.main_t.tree.selection()[0]
-            values = self.main_t.tree.item(item)['values']
+            vad_addr = self.main_t.tree.item(item)['values'][-1]
+            threading.Thread(target=vad_dump, args=(self, context, vad_addr, file_path)).start()
+            MessagePopUp('Data loading in the background\nThis will going to take a while because it\'s go all over the memory data', 3, root)
+            time.sleep(1)
 
-            app = HexDump(file_name=str(values[-1]), file_data=file_data, row_len=16)
-            app.title('Value info ({})'.format(values[-1]))
-            window_width = 1050 // 2
-            window_height = 600
-            width = app.winfo_screenwidth() // 2
-            height = app.winfo_screenheight()
-            app.geometry('%dx%d+%d+%d' % (
-            window_width, window_height, width * 0.5 - (window_width // 2), height * 0.5 - (window_height // 2)))
-        def vad_hexdump_thread_summon(self):
+        def vad_hexdump_thread_summon(self, context):
             '''
             call the thread to ge the vad data(so the gui dont freez)
             :param self: treetable
+            :param context: context
             :return: None
             '''
-            threading.Thread(target=vad_hexdump_thread, args=(self,)).start()
+            item = self.main_t.tree.selection()[0]
+            vad_addr = self.main_t.tree.item(item)['values'][-1]
+            threading.Thread(target=vad_hexdump_thread, args=(self, context, vad_addr)).start()
             MessagePopUp('Data loading in the background\nThis will going to take a while because it\'s go all over the memory data', 3, root)
             time.sleep(1)
-        def vad_hexdump_thread(self):
+        def vad_hexdump_thread(self, context, vad_addr):
             '''
             call the vad_dump in thread (so the gui dont freeze).
             :param self: treetable
-            :param file_path: file_path
+            :param context: context
+            :param vad_addr: vad address
             :return: None
             '''
-            file_data = vad_dump(self)
-            queue.put((vad_hexdump, (self, file_data)))
+            file_data = vad_dump(self, context, vad_addr)
+            create_hex_dump_fast("VAD HexDump ()".format(vad_addr), file_data, 16, 525)
 
         treetree.main_t.vad_analyze = vad_analyze
         treetree.main_t.vad_hexdump_thread_summon = vad_hexdump_thread_summon
         treetree.main_t.vad_dump_summon = vad_dump_summon
         treetree.main_t.aMenu.add_command(label='Struct Analyzer', command=lambda:treetree.main_t.vad_analyze(treetree))
-        treetree.main_t.aMenu.add_command(label='HexDump', command=lambda: treetree.main_t.vad_hexdump_thread_summon(treetree))
-        treetree.main_t.aMenu.add_command(label='Dump', command=lambda: treetree.main_t.vad_dump_summon(treetree, urllib.request.url2pathname(volself._config.DUMP_DIR)))
+        treetree.main_t.aMenu.add_command(label='HexDump', command=lambda: treetree.main_t.vad_hexdump_thread_summon(treetree, self.context))
+        treetree.main_t.aMenu.add_command(label='Dump', command=lambda: treetree.main_t.vad_dump_summon(treetree, urllib.request.url2pathname(volself._config.DUMP_DIR), self.context))
 
     def control_d(self, event=None):
         ''' This function handle ctrl+d press '''
@@ -12288,12 +12280,13 @@ class Vol3xp(interfaces.plugins.PluginInterface):
                     frame = RegViewer(self.NoteBook, dict=reg_dict, headers=("Key Name", "Creation"), reg_api=regapi)
                     self.NoteBook.add(frame, text="RegViewer")
 
-                regapi_conf = conf.ConfObject()
-                regapi_conf.readonly = {}
-                regapi_conf.PROFILE = self._config.PROFILE
-                regapi_conf.LOCATION = self._config.LOCATION
-                regapi_conf.remove_option('ADDRESS')
-                regapi = registryapi.RegistryApi(regapi_conf)
+                regapi_conf = self.context.clone()
+                regapi = hivelist.HiveList.list_hives(context=regapi_conf,
+                                                      base_config_path=self.config_path,
+                                                      layer_name=self.config['primary'],
+                                                      symbol_table=self.config['nt_symbols'],
+                                                      hive_offsets=None)
+
                 queue.put((create_the_gui, (regapi,)))
 
             threading.Thread(target=create_reg_viewer, args=(self,)).start()
@@ -12917,7 +12910,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
                 process_bases[int(pid)]['proc'].add_process_layer()
             yield process, pid, ppid, cpu, pb, ws, Description, cn, dep, aslr, cfg, protection, isDebug, Prefetch, threads, handles, un, session, noh, sc, pfc, di, it, cs, winStatus, integrity, priority, ct, cycles, wsp, ppd, pwss, vs, pvs, createT, intName, ofn, wt, cl, path, cd, version, e_proc
 
-    def calculate(self):
+    def _generator(self):
         """
         Return a list in the right order and update
         process_performance, process_dlls, process_bases, process_token
@@ -13260,7 +13253,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
             process_tree_data.append([str(item) for item in (process, pid, ppid, cpu, pb, ws, Description, cn, dep, aslr, cfg, protection, isDebug, Prefetch, threads, handles, un, session, noh, sc, pfc, di, it, cs, winStatus, integrity, priority, ct, cycles, wsp, ppd, pwss, vs, pvs, createT, intName, ofn, wt, cl, path, cd, version, str(e_proc.vol.offset))])
             yield process, pid, ppid, cpu, pb, ws, Description, cn, dep, aslr, cfg, protection, isDebug, Prefetch, threads, handles, un, session, noh, sc, pfc, di, it, cs, winStatus, integrity, priority, ct, cycles, wsp, ppd, pwss, vs, pvs, createT, intName, ofn, wt, cl, path, cd, version, str(e_proc.vol.offset)
 
-    def render_text(self, outfd, data, root_tk=None):
+    def render_ui(self, data, root_tk=None):
         """
         Init all the gui
         :param outfd: the writer (not in use)
@@ -13308,7 +13301,6 @@ class Vol3xp(interfaces.plugins.PluginInterface):
             suspend_threads = 0
             for c_thread in list(process_threads[int(list_all[item][1])].values()): #FIXME
                 thread_addr = int(c_thread[1], 16)
-                #thread_obj = obj.Object("_ETHREAD", c_thread[-1], self.kaddr_space)
                 thread_obj = self.ntkrnlmp.object("_ETHREAD",  offset=thread_addr - self.kvo)
                 try:
                     # Check if the flags is dead thread flag.
@@ -13869,19 +13861,8 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         os._exit(1)
         sys.exit()
 
-    def render_json(self, outfd, data):
-        '''
-        Memtriage support
-        :param outfd: writer (stringio)
-        :param data: the data as iterator (calculate())
-        :return: Never return (mainloop inside render_text)
-        '''
-        self.render_text(outfd, data)
-        print('[<3] Hope you find what you need bye bye')
-        sys.exit(1)
-
     def run(self):
-        self.render_text(sys.stdout, self.calculate())
+        self.render_ui(self._generator())
 
 class StructAnalyzer(interfaces.plugins.PluginInterface):
     '''Analyze an object (Gui).'''
@@ -14018,7 +13999,7 @@ class StructAnalyzer(interfaces.plugins.PluginInterface):
         '''
         StructExplorer(master, self.struct_dict, self, headers=("Struct Name", "Member Value", "Struct Address", "Object Type"), searchTitle='Struct Analyzer Search (deeg 3 inside)', writeSupport=writeSupport, relate=master).pack(fill=BOTH, expand=YES)
 
-    def calculate(self):
+    def _generator(self):
         '''
         This function parse the struct object with his child objects
         :return: None
@@ -14034,17 +14015,16 @@ class StructAnalyzer(interfaces.plugins.PluginInterface):
         except Exception as ex:
             raise Exception('[-] unable to parse this object (addr: {}, type: {}), is_valid:{}'.format(self._config.ADDR, self._config.STRUCT, 'struct.is_valid()'), ex)
 
-    def render_text(self, outfd, data):
+    def render_user_interface(self):
         '''
         This function start the StructExplorer with the data from self.calculate
-        :param outfd: writer
-        :param data: calculate()
+        :param data: _generator()
         :return: None
         '''
         global volself
         global root
         job_queue.put_alert = job_queue.put
-        outfd.write("GL & HF <3")
+        print("GL & HF <3")
         root = Tk()
         self.style = s = ThemedStyle(root) if has_themes else tkinter.ttk.Style()
         s.layout("Tab", [('Notebook.tab', {'sticky': 'nswe', 'children':
@@ -14127,18 +14107,8 @@ class StructAnalyzer(interfaces.plugins.PluginInterface):
         '''
         object.write(data)
 
-    def render_json(self, outfd, data):
-        '''
-        Memtriage support
-        :param outfd: writer (stringio)
-        :param data: the data as iterator (calculate())
-        :return: Never return (mainloop inside render_text)
-        '''
-        self.render_text(outfd, data)
-        print('[<3] Hope you find what you need bye bye')
-        sys.exit(1)
     def run(self):
-        self.render_text(sys.stdout, self.calculate())
+        self.render_user_interface(self._generator())
 
 class WinObjGui(interfaces.plugins.PluginInterface):
     '''WinObj (Explorer GUI plugin)'''
@@ -14303,7 +14273,7 @@ class WinObjGui(interfaces.plugins.PluginInterface):
                     self.winobj_builder(winobj_calc, winobj_dict, ['/', table, obj[winobj_calc.NAME]], info,
                                         '/{}'.format(full_path_str))
 
-    def calculate(self):
+    def _generator(self):
         '''
         The Calculate function that cal win_obj function,
         This function return error if winobj is not in the machine.
@@ -14321,13 +14291,13 @@ class WinObjGui(interfaces.plugins.PluginInterface):
             sys.exit(1)
         return
 
-    def render_text(self, outfd, data):
+    def render_ui(self, data):
         global volself
         global root
 
         if self._config.GET_DICT == 'no' or not self._config.GET_DICT or self._config.GET_DICT == 'None':
             job_queue.put_alert = job_queue.put
-            outfd.write("GL & HF <3")
+            print("GL & HF <3")
             app = Tk()
             self.style = s = ThemedStyle(app) if has_themes else tkinter.ttk.Style()
             s.layout("Tab", [('Notebook.tab', {'sticky': 'nswe', 'children':
@@ -14403,7 +14373,7 @@ class WinObjGui(interfaces.plugins.PluginInterface):
             os._exit(1)
             sys.exit()
     def run(self):
-        self.render_text(sys.stdout, self.calculate())
+        self.render_ui(self._generator())
 
 """
 class MftParserGui(common.AbstractWindowsCommand):
@@ -14587,7 +14557,7 @@ class FileScanGui(interfaces.plugins.PluginInterface):
                 data = (access, file_type, pointer_count, handle_count, file.vol.offset)
                 self.file_scan_builder(files_scan, path_list, data)
 
-    def calculate(self):
+    def _generator(self):
         '''
         Calculate methond, use filescan, shimecachemem, userassis, shimcache, amcache.
         :return:
@@ -14655,13 +14625,13 @@ class FileScanGui(interfaces.plugins.PluginInterface):
             sys.exit(1)
         return
 
-    def render_text(self, outfd, data):
+    def render_ui(self, data):
         global volself
         global root
         global queue
 
         if self._config.GET_DICT == 'no' or not self._config.GET_DICT or self._config.GET_DICT == 'None':
-            outfd.write("GL & HF <3")
+            print("GL & HF <3")
             job_queue.put_alert = job_queue.put
             app = Tk()
             volself = self
@@ -14734,7 +14704,7 @@ class FileScanGui(interfaces.plugins.PluginInterface):
                     else:
                         func()
     def run(self):
-        self.render_text(sys.stdout, self.calculate())
+        self.render_ui(self._generator())
 
 
 """
@@ -15091,7 +15061,7 @@ def main():
 
             my_ve._vol_path = saved_data['vol_path']
             ve_calc = my_ve.load(options['Saved File'])
-            my_ve.render_text(None, ve_calc, root)
+            my_ve.render_ui(ve_calc, root)
 
         # Run new
         else:
@@ -15126,8 +15096,8 @@ def main():
             done_run['vol_path'] = vol_path
             done_run['api_key'] = api_key
 
-            ve_calc = my_ve.calculate()
-            my_ve.render_text(None, ve_calc, root)
+            ve_calc = my_ve._generator()
+            my_ve.render_ui(ve_calc, root)
 
 
 if __name__ == '__main__':
