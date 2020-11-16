@@ -2671,7 +2671,7 @@ def create_hex_dump_fast(name, data, row_len=16, window_width=1050, window_heigh
         app.geometry('%dx%d+%d+%d' % (window_width, window_height, width * 0.5 - (window_width / 2), height * 0.5 - (window_height / 2)))
 
     # Execute it in the main thread.
-    queue.put((MessagePopUp, ('Building the HexDump UI,\nthe program UI may freeze for a cuple of secondes - minutes (depends on the file size).', 5, root, "Please Wait!")))
+    queue.put((MessagePopUp, ('Building the HexDump UI,\nthe program UI may freeze for a couple of seconds - minutes (depends on the file size).', 5, root, "Please Wait!")))
     queue.put((create_hex_dump_ui, (name, hex_data, ascii_data, unicode_data, row_len, window_width, window_height)))
 
 def get_security_descriptor(obj_header, addr_space, ntkrnlmp):
@@ -4901,7 +4901,7 @@ class RegViewer(Frame):
         # If the data represent in hexa.
         else:
             file_data = data_info.encode('utf-16-le')
-            threading.Thread(Target=create_hex_dump_fast, args=('Value info ({})'.format(key_name), file_data, 16, 525, 600)).start()
+            threading.Thread(target=create_hex_dump_fast, args=('Value info ({})'.format(key_name), file_data, 16, 525, 600)).start()
 
 
     def OpenWithoutSearch(self, event):
@@ -7533,7 +7533,8 @@ class Search(tk.Toplevel):
                 for tup in process_handles[pid]:
                     if text_to_search in tup[1].lower():
                         e_proc = process_bases[pid]["proc"]
-                        item = (objects.utility.array_to_string(e_proc.ImageFileName), pid) + tup
+                        item = (objects.utility.array_to_string(e_proc.ImageFileName), pid) + tup[0:2]
+                        print(item)
                         data.append(item)
                         #self.tree.tree.insert('', END, values=item, text=item[1])
 
@@ -7542,6 +7543,7 @@ class Search(tk.Toplevel):
                 if text_to_search in tup.lower():
                     e_proc = process_bases[pid]["proc"]
                     item = (objects.utility.array_to_string(e_proc.ImageFileName), pid, "DLL", tup)
+                    print(item)
                     data.append(item)
                     #self.tree.tree.insert('', END, values=item, text=item[1])
 
@@ -7775,6 +7777,7 @@ class CmdPlugin(tk.Toplevel):
                 #		print('FKKKKKKKKkk', dat)
 
                 def create_thread_result_ui():
+                    '''
                     self.tree = TreeTable(self, headers=self.headers, data=self.data, text_by_item=0, resize=True)
                     self.tree.tree['height'] = 22
                     self.tree.pack(expand=YES, fill=BOTH)
@@ -7789,7 +7792,7 @@ class CmdPlugin(tk.Toplevel):
                     except tk.TclError:
                         messagebox.showinfo('Plugin Finish Running',
                                             'You exit the CmdPlugin window but you can still view the output in your shell.')
-                    '''
+
 
                 queue.put((create_thread_result_ui,()))
                 #self.tree.insert_items(self.data)
@@ -13412,7 +13415,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         # display a messagepopup to the user that the gui will stop working for couple of seconds
         queue.put((MessagePopUp, ('The GUI will be unavailable for a couple of seconds..\nUpdating all files and user information in the main table (you can view them using select column [ctrl+c])\nNow we will start creating the Registry Explorer(view using view - > Registry Explorer the items will update at runtime)',5 , root, "Please Wait!")))
 
-        # Call the update function (will stop the gui for a cuple of seconds).
+        # Call the update function (will stop the gui for a couple of seconds).
         queue.put((main_table_update, (user_sids,)))
 
         # Start running the registry searching Thread
