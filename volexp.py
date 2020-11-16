@@ -7534,7 +7534,6 @@ class Search(tk.Toplevel):
                     if text_to_search in tup[1].lower():
                         e_proc = process_bases[pid]["proc"]
                         item = (objects.utility.array_to_string(e_proc.ImageFileName), pid) + tup[0:2]
-                        print(item)
                         data.append(item)
                         #self.tree.tree.insert('', END, values=item, text=item[1])
 
@@ -7543,7 +7542,6 @@ class Search(tk.Toplevel):
                 if text_to_search in tup.lower():
                     e_proc = process_bases[pid]["proc"]
                     item = (objects.utility.array_to_string(e_proc.ImageFileName), pid, "DLL", tup)
-                    print(item)
                     data.append(item)
                     #self.tree.tree.insert('', END, values=item, text=item[1])
 
