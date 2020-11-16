@@ -1710,7 +1710,7 @@ Special Thanks to:
 - The Volatility Framework creators for creating this amazing framework :)
 
 External usage:
-Python 2.7, volatility framework.
+Python 3, volatility framework.
 
 this tool use some of volatility plugins.
 """
@@ -2674,6 +2674,534 @@ def create_hex_dump_fast(name, data, row_len=16, window_width=1050, window_heigh
     queue.put((MessagePopUp, ('Building the HexDump UI,\nthe program UI may freeze for a cuple of secondes - minutes (depends on the file size).', 5, root, "Please Wait!")))
     queue.put((create_hex_dump_ui, (name, hex_data, ascii_data, unicode_data, row_len, window_width, window_height)))
 
+def get_security_descriptor(obj_header, addr_space, ntkrnlmp):
+    """
+    This function get the security descriptor object of some object from the object header.
+    :param obj_header: object header / object address
+    :param addr_space: address space
+    :return:
+    """
+    try:
+        if '_OBJECT_HEADER' not in obj_header.vol.type_name:
+            obj_header  = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_OBJECT_HEADER", offset=obj_header.vol.offset - ntkrnlmp.get_type('_OBJECT_HEADER').relative_child_offset('Body'), layer_name=addr_space)
+        # 64bit uses relative security descriptors and the last 4 bits used internally by the os (so we ignore them).
+        if ntkrnlmp.get_type('pointer').size == 4:
+            sdtype = "_SECURITY_DESCRIPTOR"
+            sdaddr = obj_header.SecurityDescriptor >> 3 << 3
+        else:
+            sdtype = "_SECURITY_DESCRIPTOR_RELATIVE"
+            sdaddr = obj_header.SecurityDescriptor >> 4 << 4
+
+        sd = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + sdtype, offset=sdaddr, layer_name=addr_space)
+    except Exception as ex:
+        sd = None
+    return sd
+
+def FlagParser(num, dict, shift=True):
+    flags_array = []
+    for c_flag in dict:
+        if (shift and num & 1 << dict[c_flag]) or (not shift and num & dict[c_flag]):
+            flags_array.append(c_flag)
+    return ', '.join(flags_array)
+
+def get_acl_info(acl, addr_space, obj_type, ntkrnlmp, ace_table, volself):
+    """
+    this function return information related to access control list
+    :param acl: access control list (_ACL)
+    :param addr_space: address space (volatility address space object)
+    :param obj_type: object type (string)
+    :return: (ace_type ,[ace_flags], ace_size, (ace_sid, ace_name), [ace_mask])
+    """
+    current_offset = acl.vol.offset + ntkrnlmp.get_type('_ACL').size
+    for i in range(acl.AceCount):
+
+        # Check if the ace address is invalid
+        if not ntkrnlmp.context.layers[addr_space].is_valid(current_offset):
+            return
+
+        ace = ntkrnlmp.context.object(ace_table + constants.BANG + "_ACE", offset=current_offset, layer_name=addr_space)
+
+        # Check if the ace is invalid
+        if not ace:
+            return
+        try:
+            ace_type = ace.Header.Type.description
+        except:
+            ace_type = 'UNKNOWN TYPE ({})'.format(ace.Header.Type)
+        ace_flags_dict = dict(ntkrnlmp.context.symbol_space[ace_table].get_enumeration('AceHeaderFlagsEnum').vol.items())['choices']
+        ace_flags = FlagParser(int(ace.Header.Flags), ace_flags_dict).split(', ') if ace.Header.Flags != 0 else ['NO_INHERITANCE_SET']
+        ace_size = ace.Header.Size
+        ace_sid = get_sid_string(ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_SID", offset=ace.SidStart.vol.offset, layer_name=addr_space), ntkrnlmp)
+
+        if hasattr(volself.get_sids_class, 'well_known_sids') and ace_sid in volself.get_sids_class.well_known_sids:
+            ace_sid_name = str(volself.get_sids_class.well_known_sids[ace_sid])
+        elif hasattr(volself.get_sids_class, 'servicesids') and ace_sid in volself.get_sids_class.servicesids:
+            ace_sid_name = str(volself.get_sids_class.servicesids[ace_sid])
+        elif ace_sid in user_sids:
+            ace_sid_name = str(user_sids[ace_sid])
+        else:
+            sid_name_re = getsids.find_sid_re(ace_sid, volself.get_sids_class.well_known_sid_re)
+            if sid_name_re:
+                ace_sid_name = str(sid_name_re)
+            else:
+                ace_sid_name = "UNKNOWN"
+
+        if obj_type.title() not in ('Process', 'Thread', 'Token', 'Service', 'File', 'Device', 'Registry'):
+            #raise ("Invalid object type incerted to get_acl_info func: {}".format(obj_type))
+            # Use Generic access mask (this apply to all type of objects.
+            ACCESS_MASK = {0x80000000: 'GENERIC_READ',
+                           0x40000000: 'GENERIC_WRITE',
+                           0x20000000: 'GENERIC_EXECUTE',
+                           0x10000000: 'GENERIC_ALL',
+                           0x08000000: 'RESERVED(27)',
+                           0x04000000: 'RESERVED(26)',
+                           0x02000000: 'ACCESS_SYSTEM_SECURITY',
+                           0x01000000: 'SACL_ACCESS',
+                           0x00800000: 'RESERVED(23)',
+                           0x00400000: 'RESERVED(22)',
+                           0x00200000: 'RESERVED(21)',
+                           0x00100000: 'SYNCHRONIZE',
+                           0x00080000: 'WRITE_OWNER',
+                           0x00040000: 'WRITE_DAC',
+                           0x00020000: 'READ_DAC',
+                           0x00010000: 'DELETE'}
+            ace_mask_num = int(ace.Mask)
+            ace_mask = []
+            for c_flag in ACCESS_MASK:
+                if ace_mask_num & c_flag:
+                    ace_mask.append(ACCESS_MASK[c_flag])
+            ace_mask = ', '.join(ace_mask)
+
+        else:
+            #ace_mask = str(getattr(ace, "{}Mask".format(obj_type.title())))
+            ace_mask = "{}MaskEnum".format(obj_type.title())
+            ace_dict = dict(ntkrnlmp.context.symbol_space[ace_table].get_enumeration(ace_mask).vol.items())['choices']
+            ace_mask = FlagParser(ace.Mask, ace_dict)
+
+        yield (ace_type ,ace_flags, ace_size, (ace_sid, ace_sid_name), ace_mask)
+        current_offset += ace_size
+
+def get_sid_string(sid, ntkrnlmp):
+    id_auth = None
+    for i in sid.IdentifierAuthority.Value:
+        id_auth = i
+
+    ## not a valid sid, currently all sid revisions == 1
+    if sid.Revision & 0xF != 1 or sid.SubAuthorityCount > 15:
+        raise TypeError
+
+    SubAuthority = ntkrnlmp.object(object_type="array",
+                                   offset=sid.SubAuthority.vol.offset - ntkrnlmp.offset,
+                                   subtype=ntkrnlmp.get_type("unsigned long"),
+                                   count=int(sid.SubAuthorityCount))
+
+    if id_auth:
+        return "S-" + "-".join(str(i) for i in (sid.Revision, id_auth) + tuple(SubAuthority))
+    return 'Unnable to parse sid'
+
+def get_security_info(sd, addr_space, obj_type, ntkrnlmp, volself):
+    """
+    Get security information from security descriptor
+    :param sd: _SECURITY_DESCRIPTOR
+    :param addr_space: address space
+    :param obj_type: object type
+    :return: (('owner sid', 'owner name'), ('group sid', 'group name'), [dacl], [sacl])
+    """
+    # Make sure we have the security descriptor/relative object
+    if not hasattr(sd, 'vol') or not '_SECURITY_DESCRIPTOR' in sd.vol.type_name:
+        sd = get_security_descriptor(sd, addr_space, ntkrnlmp)
+
+    # Check if the security decriptor is valid.
+    if not sd or (not sd.has_valid_member('Control') or not sd.has_valid_member('Dacl')):
+        return (('', ''), ('', ''), [], [])
+
+    sd_ctrl_flags = {
+        0x0001: 'SE_OWNER_DEFAULTED',
+        0x0002: 'SE_GROUP_DEFAULTED',
+        0x0004: 'SE_DACL_PRESENT',
+        0x0008: 'SE_DACL_DEFAULTED',
+        0x0010: 'SE_SACL_PRESENT',
+        0x0020: 'SE_SACL_DEFAULTED',
+        0x0040: '<Unknown-2**6=0x40>',
+        0x0080: '<Unknown-2**7=0x80>',
+        0x0100: 'SE_DACL_AUTO_INHERIT_REQ',
+        0x0200: 'SE_SACL_AUTO_INHERIT_REQ',
+        0x0400: 'SE_DACL_AUTO_INHERITED',
+        0x0800: 'SE_SACL_AUTO_INHERITED',
+        0x1000: 'SE_DACL_PROTECTED',
+        0x2000: 'SE_SACL_PROTECTED',
+        0x4000: 'SE_RM_CONTROL_VALID',
+        0x8000: 'SE_SELF_RELATIVE'
+    }
+    dacl = []
+    sacl = []
+    control_flags = []
+    control_flags_num = sd.Control
+    for c_flag in sd_ctrl_flags:
+        if control_flags_num & c_flag:
+            control_flags.append(sd_ctrl_flags[c_flag])
+
+    try:
+        ace_table = intermed.IntermediateSymbolTable.create(ntkrnlmp.context,
+                                                            volself.config_path,
+                                                            "windows",
+                                                            "access-control-entry",
+                                                            class_types = {'_ACE': objects.StructType,
+                                                                           '_ACE_HEADER': objects.StructType})
+    except Exception:
+        fn = os.path.join(os.path.dirname(vol_path), 'volatility', 'framework', 'symbols', 'windows', 'access-control-entry.json')
+        ACE_JSON = {
+	"metadata": {
+		"producer": {
+			"version": "0.0.1",
+			"name": "memoryforensics1-by-hand",
+			"datetime": "2017-09-04T22:45:22"
+		},
+		"format": "4.0.0"
+	},
+	"symbols": {},
+	"enums": {
+		"AceHeaderTypeEnum": {
+			"base": "unsigned char",
+			"constants": {
+				"ACCESS_ALLOWED": 0,
+				"ACCESS_DENIED": 1,
+				"SYSTEM_AUDIT": 2,
+				"SYSTEM_ALARM": 3,
+				"ACCESS_ALLOWED_COMPOUND": 4,
+				"ACCESS_ALLOWED_OBJECT": 5,
+				"ACCESS_DENIED_OBJECT": 6,
+				"SYSTEM_AUDIT_OBJECT": 7,
+				"SYSTEM_ALARM_OBJECT": 8,
+				"ACCESS_ALLOWED_CALLBACK": 9,
+				"ACCESS_DENIED_CALLBACK": 10,
+				"ACCESS_ALLOWED_CALLBACK_OBJECT": 11,
+				"ACCESS_DENIED_CALLBACK_OBJECT": 12,
+				"SYSTEM_AUDIT_CALLBACK": 13,
+				"SYSTEM_ALARM_CALLBACK": 14,
+				"SYSTEM_AUDIT_CALLBACK_OBJECT": 15,
+				"SYSTEM_ALARM_CALLBACK_OBJECT": 16,
+				"SYSTEM_MANDATORY_LABEL": 17
+			},
+			"size": 4
+		},
+		"AceHeaderFlagsEnum": {
+			"base": "unsigned char",
+			"constants": {
+				"OBJECT_INHERIT_ACE": 1,
+				"CONTAINER_INHERIT_ACE": 2,
+				"NO_PROPAGATE_INHERIT_ACE": 3,
+				"INHERIT_ONLY_ACE": 4,
+				"INHERITED_ACE": 5
+			},
+			"size": 4
+		},
+		"ProcessMaskEnum": {
+			"base": "unsigned int",
+			"constants": {
+				"PROCESS_TERMINATE": 0,
+				"PROCESS_CREATE_THREAD": 2,
+				"PROCESS_VM_OPERATION": 3,
+				"PROCESS_VM_READ": 4,
+				"PROCESS_VM_WRITE": 5,
+				"PROCESS_DUP_HANDLE": 6,
+				"PROCESS_CREATE_PROCESS": 7,
+				"PROCESS_SET_QUOTA": 8,
+				"PROCESS_SET_INFORMATION": 9,
+				"PROCESS_QUERY_INFORMATION": 10,
+				"PROCESS_SUSPEND_RESUME": 11,
+				"PROCESS_QUERY_LIMITED_INFORMATION": 12,
+				"Read DAC": 17,
+				"Write DAC": 18,
+				"Write Owner": 19,
+				"Synchronize": 20,
+				"SACL Access": 24,
+				"ACCESS_SYSTEM_SECURITY": 25,
+				"Generic All": 28,
+				"Generic Execute": 29,
+				"Generic Write": 30,
+				"Generic Read": 31
+			},
+			"size": 4
+		},
+		"ServiceMaskEnum": {
+			"base": "unsigned int",
+			"constants": {
+				"SERVICE_QUERY_CONFIG": 0,
+				"SERVICE_CHANGE_CONFIG": 1,
+				"SERVICE_QUERY_STATUS": 2,
+				"SERVICE_ENUMERATE_DEPENDENTS": 3,
+				"SERVICE_START": 4,
+				"SERVICE_STOP": 5,
+				"SERVICE_PAUSE_CONTINUE": 6,
+				"SERVICE_INTERROGATE": 7,
+				"SERVICE_USER_DEFINED_CONTROL": 8,
+				"Read DAC": 17,
+				"Write DAC": 18,
+				"Write Owner": 19,
+				"Synchronize": 20,
+				"SACL Access": 24,
+				"ACCESS_SYSTEM_SECURITY": 25,
+				"Generic All": 28,
+				"Generic Execute": 29,
+				"Generic Write": 30,
+				"Generic Read": 31
+			},
+			"size": 4
+		},
+		"ThreadMaskEnum": {
+			"base": "unsigned int",
+			"constants": {
+				"THREAD_TERMINATE": 0,
+				"THREAD_SUSPEND_RESUME": 1,
+				"THREAD_GET_CONTEXT": 3,
+				"THREAD_SET_CONTEXT": 4,
+				"THREAD_SET_INFORMATION": 5,
+				"THREAD_QUERY_INFORMATION": 6,
+				"THREAD_SET_THREAD_TOKEN": 7,
+				"THREAD_IMPERSONATE": 8,
+				"THREAD_DIRECT_IMPERSONATION": 9,
+				"THREAD_QUERY_LIMITED_INFORMATION": 11,
+				"THREAD_SET_LIMITED_INFORMATION": 10,
+				"Read DAC": 17,
+				"Write DAC": 18,
+				"Write Owner": 19,
+				"Synchronize": 20,
+				"SACL Access": 24,
+				"ACCESS_SYSTEM_SECURITY": 25,
+				"Generic All": 28,
+				"Generic Execute": 29,
+				"Generic Write": 30,
+				"Generic Read": 31
+			},
+			"size": 4
+		},
+		"TokenMaskEnum": {
+			"base": "unsigned int",
+			"constants": {
+				"TOKEN_ASSIGN_PRIMARY": 0,
+				"TOKEN_DUPLICATE": 1,
+				"TOKEN_IMPERSONATE": 2,
+				"TOKEN_QUERY": 3,
+				"TOKEN_QUERY_SOURCE": 4,
+				"TOKEN_ADJUST_PRIVILEGES": 5,
+				"TOKEN_ADJUST_GROUPS": 6,
+				"TOKEN_ADJUST_DEFAULT": 7,
+				"TOKEN_ADJUST_SESSIONID": 8,
+				"Read DAC": 17,
+				"Write DAC": 18,
+				"Write Owner": 19,
+				"Synchronize": 20,
+				"SACL Access": 24,
+				"ACCESS_SYSTEM_SECURITY": 25,
+				"Generic All": 28,
+				"Generic Execute": 29,
+				"Generic Write": 30,
+				"Generic Read": 31
+			},
+			"size": 4
+		},
+		"RegistryMaskEnum": {
+			"base": "unsigned int",
+			"constants": {
+				"KEY_QUERY_VALUE": 0,
+				"KEY_SET_VALUE": 1,
+				"KEY_CREATE_SUB_KEY ": 2,
+				"KEY_ENUMERATE_SUB_KEYS ": 3,
+				"KEY_NOTIFY": 4,
+				"KEY_CREATE_LINK ": 5,
+				"KEY_WOW64_64KEY": 8,
+				"KEY_WOW64_32KEY": 9,
+				"Read DAC": 17,
+				"Write DAC": 18,
+				"Write Owner": 19,
+				"Synchronize": 20,
+				"SACL Access": 24,
+				"ACCESS_SYSTEM_SECURITY": 25,
+				"Generic All": 28,
+				"Generic Execute": 29,
+				"Generic Write": 30,
+				"Generic Read": 31
+			},
+			"size": 4
+		},
+		"FileMaskEnum": {
+			"base": "unsigned int",
+			"constants": {
+				"FILE_READ_DATA": 0,
+				"FILE_WRITE_DATA": 1,
+				"FILE_APPEND_DATA": 2,
+				"FILE_READ_EA": 3,
+				"FILE_WRITE_EA": 4,
+				"FILE_EXECUTE": 5,
+				"FILE_READ_ATTRIBUTES": 7,
+				"FILE_WRITE_ATTRIBUTES": 8,
+				"Read DAC": 17,
+				"Write DAC": 18,
+				"Write Owner": 19,
+				"Synchronize": 20,
+				"SACL Access": 24,
+				"ACCESS_SYSTEM_SECURITY": 25,
+				"Generic All": 28,
+				"Generic Execute": 29,
+				"Generic Write": 30,
+				"Generic Read": 31
+			},
+			"size": 4
+		}
+	},
+	"user_types": {
+		"_ACE_HEADER": {
+			"fields": {
+				"Type": {
+					"offset": 0,
+					"type": {
+						"kind": "enum",
+						"name": "AceHeaderTypeEnum"
+					}
+				},
+				"Flags": {
+					"offset": 1,
+					"type": {
+						"kind": "base",
+						"name": "unsigned char"
+					}
+				},
+				"Size": {
+					"offset": 2,
+					"type": {
+						"kind": "base",
+						"name": "unsigned short"
+					}
+				}
+			},
+			"kind": "struct",
+			"size": 4
+		},
+		"_ACE": {
+			"fields": {
+				"Header": {
+					"offset": 0,
+					"type": {
+						"kind": "struct",
+						"name": "_ACE_HEADER"
+					}
+				},
+				"Mask": {
+					"offset": 4,
+					"type": {
+						"kind": "base",
+						"name": "unsigned int"
+					}
+				},
+				"SidStart": {
+					"offset": 8,
+					"type": {
+						"kind": "base",
+						"name": "unsigned int"
+					}
+				}
+			},
+			"kind": "struct",
+			"size": 14
+		}
+	},
+	"base_types": {
+		"unsigned char": {
+			"kind": "char",
+			"size": 1,
+			"signed": False,
+			"endian": "little"
+		},
+		"unsigned int": {
+			"kind": "int",
+			"size": 4,
+			"signed": False,
+			"endian": "little"
+		},
+		"unsigned short": {
+			"endian": "little",
+			"kind": "int",
+			"signed": False,
+			"size": 2
+		}
+	}
+}
+        with open(fn, 'w') as fh:
+            json.dump(ACE_JSON, fh)
+        ace_table = intermed.IntermediateSymbolTable.create(ntkrnlmp.context,
+                                                            volself.config_path,
+                                                            "windows",
+                                                            "access-control-entry",
+                                                            class_types={'_ACE': objects.StructType,
+                                                                         '_ACE_HEADER': objects.StructType})
+
+    # get DACL info
+    if 'SE_DACL_PRESENT' not in control_flags:
+        pass # no Dacl !!
+    elif sd.Dacl == 0:
+        pass # SE_DACL_PRESENT with null Dacl !!
+    else:
+        if 'SE_SELF_RELATIVE' in control_flags:
+            dacl = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_ACL", offset=sd.vol.offset + sd.Dacl, layer_name=addr_space)
+        else:
+            #if (addr_space.profile.metadata.get('major', 0) == 6):
+            #    sd = obj.Object("_SECURITY_DESCRIPTOR", sd.obj_offset, addr_space)
+            dacl = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_ACL", offset=sd.Dacl, layer_name=addr_space)
+        if dacl:
+            dacl = list(get_acl_info(dacl, addr_space, obj_type, ntkrnlmp, ace_table, volself))
+        else:
+            dacl = []
+
+    # Get SACL info
+    if 'SE_SACL_PRESENT' in control_flags:
+        if 'SE_SELF_RELATIVE' in control_flags:
+            sacl = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_ACL", offset=sd.vol.offset + sd.Sacl, layer_name=addr_space)
+        else:
+            sacl = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_ACL", offset=sd.Sacl, layer_name=addr_space)
+        if sacl:
+            sacl = list(get_acl_info(sacl, addr_space, obj_type, ntkrnlmp, ace_table, volself))
+        else:
+            sacl= []
+
+    # Get owner and group sids
+    if 'SE_SELF_RELATIVE' in control_flags:
+        owner_sid = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_SID", offset=sd.vol.offset + sd.Owner, layer_name=addr_space)
+        group_sid = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_SID", offset=sd.vol.offset + sd.Group, layer_name=addr_space)
+    else:
+        group_sid = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_SID", offset=sd.Group, layer_name=addr_space)
+        owner_sid = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_SID", offset=sd.Owner, layer_name=addr_space)
+
+    owner_sid = get_sid_string(owner_sid, ntkrnlmp)
+    group_sid = get_sid_string(group_sid, ntkrnlmp)
+
+    if hasattr(volself.get_sids_class, 'well_known_sids') and owner_sid in volself.get_sids_class.well_known_sids:
+        owner_sid_name = str(volself.get_sids_class.well_known_sids[owner_sid])
+    elif hasattr(volself.get_sids_class, 'servicesids') and owner_sid in volself.get_sids_class.servicesids:
+        owner_sid_name = str(volself.get_sids_class.servicesids[owner_sid])
+    elif owner_sid in user_sids:
+        owner_sid_name = str(user_sids[owner_sid])
+    else:
+        sid_name_re = getsids.find_sid_re(owner_sid, volself.get_sids_class.well_known_sid_re)
+        if sid_name_re:
+            owner_sid_name = str(sid_name_re)
+        else:
+            owner_sid_name = "UNKNOWN"
+
+    if hasattr(volself.get_sids_class, 'well_known_sids') and group_sid in volself.get_sids_class.well_known_sids:
+        group_sid_name = str(volself.get_sids_class.well_known_sids[group_sid])
+    elif hasattr(volself.get_sids_class, 'servicesids') and group_sid in volself.get_sids_class.servicesids:
+        group_sid_name = str(volself.get_sids_class.servicesids[group_sid])
+    elif group_sid in user_sids:
+        group_sid_name = str(user_sids[group_sid])
+    else:
+        sid_name_re = getsids.find_sid_re(group_sid, volself.get_sids_class.well_known_sid_re)
+        if sid_name_re:
+            group_sid_name = str(sid_name_re)
+        else:
+            group_sid_name = "UNKNOWN"
+
+    return ((owner_sid, owner_sid_name), (group_sid, group_sid_name), dacl, sacl)
 
 #endregion global fucntion
 
@@ -5368,6 +5896,7 @@ class WinObjExplorer(Explorer):
         Explorer.__init__(self, master, dict, headers, searchTitle, resize, path, relate, *args, **kwargs)
 
         self.tree.aMenu.add_command(label='Struct Analyzer', command=self.run_struct_analyze)
+        self.tree.aMenu.add_command(label='Obj Info', command=self.get_obj_info)
 
     def OnDoubleClick(self, event):
         '''
@@ -5416,6 +5945,53 @@ class WinObjExplorer(Explorer):
             return
         print("[+] Run Struct Analyzer on {}, addr: {}".format(struct_type, addr))
         threading.Thread(target=run_struct_analyze, args=(struct_type, addr)).start()
+
+    def get_obj_info(self):
+        type_to_type_name = {'Key': 'Registry', }
+        not_supported_yet = ['File', 'Registry']
+
+        item = self.tree.tree.selection()[0]
+        data = self.tree.tree.item(item)['values']
+        obj_type = data[1]
+
+        # Validate name
+        if obj_type in type_to_type_name:
+            obj_type = type_to_type_name[obj_type]
+
+        # Validate that we know how to parse this type of object (from handle table)
+        if obj_type in not_supported_yet:
+            messagebox.showerror("Error!", "Sorry,\nThis object parsing is not supported from here.", parent=self)
+            return
+
+        obj_va = data[-1]
+        obj_name = data[0]
+
+        with lock:
+            obj_info_conf = volself.context.clone()
+            obj_info_kaddr_space = volself.config['primary']
+            kvo = obj_info_conf.layers[obj_info_kaddr_space].config["kernel_virtual_offset"]
+            nt_symbols = volself.config['nt_symbols']
+            ntkrnlmp = volself.context.module(nt_symbols, layer_name=obj_info_kaddr_space, offset=kvo)
+
+        oh = obj_info_conf.object(nt_symbols + constants.BANG +"_OBJECT_HEADER", offset=obj_va - ntkrnlmp.get_type('_OBJECT_HEADER').relative_child_offset('Body'), layer_name=obj_info_kaddr_space)
+
+        # Get The Data
+        try:
+            data = get_security_info(oh, obj_info_kaddr_space, obj_type, ntkrnlmp, volself)
+        except TypeError:
+            messagebox.showerror("Error!", "Sorry,\nUnable to parse the SID object", parent=self)
+            return
+
+        # Create the top level
+        app = tk.Toplevel()
+        x = root.winfo_x()
+        y = root.winfo_y()
+        app.geometry("+%d+%d" % (x + ABS_X + 200, y + ABS_Y + 30))
+        ObjectProperties(app, data).pack(fill=BOTH, expand=YES)
+        app.title("{} - {} :{} Properties".format(obj_type, obj_name, obj_va))
+        window_width = 550
+        window_height = 600
+        app.geometry('%dx%d' % (window_width, window_height))
 
 class ExpSearch(tk.Toplevel):
     '''
@@ -8532,11 +9108,11 @@ class TreeTree(Frame):
 
         # Create the lower table.
         self.mem_view = mem_view = TreeTable(self.pw, ("Members", "Values"), [], name, 0, resize, ("Members", "Values"), *args, **kwargs)
+        mem_view.tree['height'] = 10 if len(headers) > 10 else len(headers)
         for item in headers:
-            self.opts[item] = StringVar()
-            self.opts[item].set('-')
-            mem_view.tree.insert('', END, values=(item, self.opts[item].get()), text=item)
-            mem_view.visual_drag.insert('', END, values=(item, self.opts[item].get()), text=item)
+            self.opts[item] = ''
+            mem_view.tree.insert('', END, values=(item, self.opts[item]), text=item)
+            mem_view.visual_drag.insert('', END, values=(item, self.opts[item]), text=item)
         mem_view.pack(expand=YES, fill=BOTH)
         self.pw.add(main_t)
         self.pw.add(mem_view)
@@ -8562,14 +9138,81 @@ class TreeTree(Frame):
 
         # Go all over the headers
         for item in range(len(self.main_t.headers)):
-            self.opts[self.main_t.headers[item]].set(values[item])
+            self.opts[self.main_t.headers[item]] = values[item]
             index = 0
 
             # Set the table to the selected item.
-            for c_item in self.mem_view.tree.get_children():
-                self.mem_view.tree.item(c_item, values=(self.main_t.headers[index], self.opts[self.main_t.headers[index]].get()))
-                self.mem_view.visual_drag.item(c_item, values=(self.main_t.headers[index], self.opts[self.main_t.headers[index]].get()))
+            children_items = list(self.mem_view.tree.get_children())
+            for c_item in children_items:
+                self.mem_view.tree.set(c_item, "#2", self.opts[self.main_t.headers[index]])
+                self.mem_view.visual_drag.set(c_item, "#2", self.opts[self.main_t.headers[index]])
                 index += 1
+
+class ObjectProperties(Frame):
+    def __init__(self, master, object_info, menu_show='ObjSecurity', relate=None, *args, **kwargs):
+        Frame.__init__(self, master, *args, **kwargs)
+        self.title_font = tkinter.font.Font(family='Helvetica', size=16, weight="bold", slant="italic")
+        self.relate = relate
+        tabcontroller = NoteBook(self)
+        self.frames = {}
+        self.object_info = object_info
+
+
+        # __init__ all the classes (the notebook tabs).
+        for F in (ObjSecurity, ):
+            page_name = F.__name__
+            frame = F(parent=tabcontroller, controller=self)
+            self.frames[page_name] = frame
+            frame.config()
+            frame.grid(row=0, column=0, sticky=E + W + N + S)
+            tabcontroller.add(frame, text=page_name)
+
+        tabcontroller.enable_traversal()
+        tabcontroller.pack(fill=BOTH, expand=1)
+        if menu_show in self.frames:
+            tabcontroller.select(self.frames[menu_show])
+        self.tabcontroller = tabcontroller
+
+class ObjSecurity(Frame):
+    '''
+    This class represent the Properties Security tab.
+    '''
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+        label = tkinter.ttk.Label(self, text="Security", font=controller.title_font)
+        label.config(anchor="center")
+        label.pack(side="top", fill="x", pady=10)
+        #self.pw = PanedWindow(self, orient='vertical')
+        object_info = self.controller.object_info
+
+        my_info = ''.join(('Owner, Group SIDs:\n{} ({})'.format(object_info[0][1], object_info[0][0]), '\n{} ({})'.format(object_info[1][1], object_info[1][0]), '\n'))
+        lb_info = tkinter.ttk.Label(self, text=my_info, wraplength=500)#, background="white")
+        lb_info.pack()
+
+        # Get the Groups security information (if we have it).
+        if len(object_info[2]):
+            data = object_info[2]
+            dacl_treetable = TreeTree(self, headers=("ace type" ,"ace flags", "ace size", "ace sid", "ace mask"), data=data, resize=True, display=("ace sid", "ace type"))
+            #dacl_treetable.tree['height'] = 7 if 7 < len(data) else len(data)
+            dacl_treetable.pack(expand=YES, fill=BOTH)
+            #self.pw.add(dacl_treetable)
+        else:
+            lb_info = tkinter.ttk.Label(self, text="There Is No DACL!!!", wraplength=500)
+            lb_info.pack()
+            #self.pw.add(lb_info)
+
+
+        # Get the Privs security information (if we have it).
+        if len(object_info[3]):
+            data = object_info[3]
+            sacl_treetable = TreeTree(self, headers=("ace type" ,"ace flags", "ace size", "ace sid", "ace mask"), data=data, resize=True, display=("ace sid", "ace type"))
+            #sacl_treetable.tree['height'] = 7 if 7 < len(data) else len(data)
+            sacl_treetable.pack(expand=YES, fill=BOTH)
+            #self.pw.add(sacl_treetable)
+
+        # Pack the information.
+        #self.pw.pack(fill=BOTH, expand=YES)#(side=TOP, fill=BOTH)
 
 class DllsTable(TreeTable):
     '''
@@ -9955,6 +10598,59 @@ class ProcessesTable(TreeTable):
         self.handles_tablel = handles_table = TreeTable(self.lower_table, headers=("Type", "Name", "File Share Access", "Handle", "Access", "Decoded Access", "Virtual Address", "Physical Address"), data=data, resize=False, display=("Type", "Name", "File Share Access", "Handle", "Access", "Decoded Access"))
         self.frames['Handles'] = handles_table
         handles_table.pack(side=TOP, fill=BOTH)
+
+        def view_security_information():
+            type_to_type_name = {'Key': 'Registry', }
+            not_supported_yet = ['File', 'Registry']
+
+            proc_item = self.tree.selection()[0]
+            pid = int(self.tree.item(proc_item)['values'][self.text_by_item])
+            item = self.handles_tablel.tree.selection()[0]
+            data = self.handles_tablel.tree.item(item)['values']
+            obj_type = data[0]
+
+            # Validate name
+            if obj_type in type_to_type_name:
+                obj_type = type_to_type_name[obj_type]
+
+            # Validate that we know how to parse this type of object (from handle table)
+            if obj_type in not_supported_yet:
+                messagebox.showerror("Error!", "Sorry,\nThis object parsing is not supported from the handle table.",
+                                     parent=self.handles_tablel)
+                return
+
+            obj_va = int(data[-2], 16)
+            obj_name = data[1]
+
+            for c_task in self.task_list:
+                if int(c_task.UniqueProcessId) == pid:
+                    break
+            addr_space = c_task.add_process_layer()
+            ntkrnlmp = self.ntkrnlmp
+
+            oh = ntkrnlmp.context.object(ntkrnlmp.symbol_table_name + constants.BANG + "_OBJECT_HEADER",
+                            offset=obj_va - ntkrnlmp.get_type('_OBJECT_HEADER').relative_child_offset('Body'),
+                            layer_name=addr_space)  # .SecurityDescriptor
+
+            # Get The Data
+            try:
+                data = get_security_info(oh, addr_space, obj_type, ntkrnlmp, volself)
+            except TypeError:
+                messagebox.showerror("Error!", "Sorry,\nUnable to parse the SID object", parent=self.handles_tablel)
+                return
+
+            # Create the top level
+            app = tk.Toplevel()
+            x = root.winfo_x()
+            y = root.winfo_y()
+            app.geometry("+%d+%d" % (x + ABS_X + 200, y + ABS_Y + 30))
+            ObjectProperties(app, data).pack(fill=BOTH, expand=YES)
+            app.title("{} - {} :{} Properties".format(obj_type, obj_name, obj_va))
+            window_width = 550
+            window_height = 600
+            app.geometry('%dx%d' % (window_width, window_height))
+
+        handles_table.aMenu.add_command(label='Security Information', command=view_security_information)
         self.lower_table.add(handles_table, text='Handles')
 
         # Get and create the network data table.
@@ -14113,6 +14809,7 @@ class StructAnalyzer(interfaces.plugins.PluginInterface):
 class WinObjGui(interfaces.plugins.PluginInterface):
     '''WinObj (Explorer GUI plugin)'''
     _version = (1, 0, 0)
+
     def __init__(self, *args, **kwargs): # Fix init from vol2
         global location, dump_dir, profile, api_key, vol_path
         global volself
@@ -14120,6 +14817,7 @@ class WinObjGui(interfaces.plugins.PluginInterface):
         global root
         super().__init__(*args, **kwargs)
         volself = self
+        volself.get_sids_class = getsids.GetSIDs(self.context.clone(), self._config_path)
         self._config = self.config
         self.kaddr_space = list(self.context.layers.keys())[-1]
         self._config.verbose = False#True
@@ -14478,6 +15176,7 @@ class MftParserGui(common.AbstractWindowsCommand):
 class FileScanGui(interfaces.plugins.PluginInterface):
     '''FileScan (Explorer GUI plugin)'''
     _version = (1, 0, 0)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._config = self.config
