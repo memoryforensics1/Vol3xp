@@ -4,13 +4,13 @@
 import logging
 from typing import List
 
-from volatility.framework import renderers, interfaces, objects, exceptions, constants
-from volatility.framework.configuration import requirements
-from volatility.framework.objects import utility
-from volatility.framework.renderers import format_hints
-import volatility.plugins.windows.info as info
-import volatility.plugins.windows.handles as handles
-from volatility.plugins.windows import pslist
+from volatility3.framework import renderers, interfaces, objects, exceptions, constants
+from volatility3.framework.configuration import requirements
+from volatility3.framework.objects import utility
+from volatility3.framework.renderers import format_hints
+import volatility3.plugins.windows.info as info
+import volatility3.plugins.windows.handles as handles
+from volatility3.plugins.windows import pslist
 
 vollog = logging.getLogger(__name__)
 
@@ -27,13 +27,16 @@ class WinObj(interfaces.plugins.PluginInterface):
 	 Object Manager Enumeration
 	"""
 
-	_version = (1, 0, 0)
+	_required_framework_version = (2, 0, 0)
+	_version = (2, 0, 0)
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
+		self.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+		self.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
 		self.kaddr_space = self.config['primary']
-		self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
+		self.kvo = self.context.layers[self.config['primary']].config["kernel_virtual_offset"]
 		self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
 		                                     layer_name=self.kaddr_space,
 		                                     offset=self.kvo)
@@ -82,9 +85,8 @@ class WinObj(interfaces.plugins.PluginInterface):
 	@classmethod
 	def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
 		# Since we're calling the plugin, make sure we have the plugin's requirements
-		return [requirements.TranslationLayerRequirement(name='primary',
-														 description='Memory layer for the kernel',
-														 architectures=["Intel32", "Intel64"]),
+		return [requirements.ModuleRequirement(name='kernel', description='Windows kernel',
+                                           architectures=["Intel32", "Intel64"]),
 				requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
 				requirements.BooleanRequirement(name='PARSE_ALL',
 											 description='Parse every directory under the root dir',
