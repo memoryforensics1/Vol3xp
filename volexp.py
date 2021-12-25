@@ -30,24 +30,27 @@ import tkinter.simpledialog
 import tkinter.scrolledtext as scrolledtext
 import tkinter.messagebox as messagebox
 
-from volatility import framework
-from volatility.framework.configuration import requirements
-from volatility.framework.renderers import format_hints, UnreadableValue, conversion
-from volatility.framework import constants, exceptions, interfaces, objects, renderers, symbols
-from volatility.framework.symbols import intermed
-from volatility.framework.symbols.windows import extensions
-from volatility.plugins import windows
-import volatility.plugins.windows.pslist as tasks
-import volatility.plugins.windows.info as info
-import volatility.plugins.windows.privileges as privileges
-import volatility.plugins.windows.modules as modules
-import volatility.plugins.windows.vadinfo as vadinfo
-import volatility.plugins.windows.dlllist as dlllist
-import volatility.plugins.windows.getsids as getsids
-import volatility.plugins.windows.registry.hivelist as hivelist
-from volatility.framework.layers.registry import RegistryFormatException
-from volatility.framework.symbols.windows.extensions.registry import RegValueTypes
-from volatility.cli import text_renderer
+try:
+    from volatility3 import framework
+except ImportError:
+    raise Exception('Please execute setup.py install first.')
+from volatility3.framework.configuration import requirements
+from volatility3.framework.renderers import format_hints, UnreadableValue, conversion
+from volatility3.framework import constants, exceptions, interfaces, objects, renderers, symbols
+from volatility3.framework.symbols import intermed
+from volatility3.framework.symbols.windows import extensions
+from volatility3.plugins import windows
+import volatility3.plugins.windows.pslist as tasks
+import volatility3.plugins.windows.info as info
+import volatility3.plugins.windows.privileges as privileges
+import volatility3.plugins.windows.modules as modules
+import volatility3.plugins.windows.vadinfo as vadinfo
+import volatility3.plugins.windows.dlllist as dlllist
+import volatility3.plugins.windows.getsids as getsids
+import volatility3.plugins.windows.registry.hivelist as hivelist
+from volatility3.framework.layers.registry import RegistryFormatException
+from volatility3.framework.symbols.windows.extensions.registry import RegValueTypes
+from volatility3.cli import text_renderer
 import logging; debug = vollog = logging.getLogger(__name__)
 
 #region Try imports
@@ -73,11 +76,11 @@ except ImportError:
     vollog.log(constants.LOGLEVEL_VVV, "Please install distorm3 to see disassemble stuff..")
 
 try:
-    import volatility.plugins.windows.winobj as winobj
+    import volatility3.plugins.windows.winobj as winobj
     has_winobj = True
 except Exception as ex:
     try:
-        import volatility.plugins.windows.community.winobj as winobj
+        import volatility3.plugins.windows.community.winobj as winobj
     except Exception as ex:
         has_winobj = False
         vollog.log(constants.LOGLEVEL_VVV,  "You get this error because you dont have the winobj plugin, Please download this plugin for enumerate object in gui (in volexp git).\nThe Error:\n {}".format(ex))
@@ -1894,7 +1897,7 @@ def loading_start(loading_reason="Loading, Please Wait"):
     file_path = os.path.abspath(__file__)#os.path.join(os.getcwd(), "volexp.py") if os.path.exists(os.path.join(os.getcwd(), "volexp.py")) else (os.path.realpath(os.path.realpath('__file__').replace('__file__', 'volexp.py')) if all_plugins[0] == 'path' else all_plugins[0])
     if not os.path.exists(file_path):
         file_path = file_path.replace(os.path.split(file_path)[1], os.path.join('volatility', 'plugins', 'volexp.py')).replace('volexp.py', os.path.join('volatility', 'plugins', 'volexp.py')).replace(os.path.join('volatility', 'plugins', 'volatility', 'plugins'), os.path.join('volatility', 'plugins'))
-    cc = [sys.executable.replace(' ', ''),file_path, 'LoadScreen',loading_reason]
+    cc = [sys.executable,file_path, 'LoadScreen',loading_reason]
     sub_proc = subprocess.Popen(cc)
     root.withdraw()
     return sub_proc
@@ -1981,6 +1984,8 @@ def run_struct_analyze(struct_type, address, app=None, pid=4, as_thread=True, wr
     :return: None
     '''
 
+    print("SA", struct_type, address, app, pid, as_thread, write_sup)
+
     # Add to job queue
     id = time.time()
     job_queue.put_alert((id, 'Struct Analyzer', '{}, args: {} ({})'.format(struct_type, address, pid), 'Running'))
@@ -2002,7 +2007,7 @@ def run_struct_analyze(struct_type, address, app=None, pid=4, as_thread=True, wr
     elif '_' in str(pid):
         for c_layer_name in sa_conf.layers._layers:
             if '_' in c_layer_name and str(pid).split('_')[1] == c_layer_name.split('_')[1]:
-                sa_conf.PID = c_layer_name
+                sa_conf.PID = pid #c_layer_name (new change!!25.12.2021)
                 break
     elif pid == 'physical':
         sa_conf.PID = 'physical'
@@ -2056,8 +2061,7 @@ def dump_file(offset, nt, directory=None):
     with lock:
         def_conf = volself.context.clone()
         def_conf.symbols = volself.config['nt_symbols']
-    def_conf.kaddr_space = def_conf.layers['primary']
-
+    def_conf.kaddr_space = def_conf.layers[self.config['primary']]
     file_data = []
     #file_mem = {} # DataSectionObject, ImageSectionObject, SharedCacheMap
     zero_file_pad = []
@@ -2065,8 +2069,7 @@ def dump_file(offset, nt, directory=None):
     file_obj = def_conf.object(def_conf.symbols + constants.BANG + '_FILE_OBJECT',
                     offset = offset,
                     layer_name='memory_layer',
-                    native_layer_name = 'primary')
-
+                    native_layer_name = self.config['primary'])
     file_name = file_obj.file_name_with_device()
 
     DataSectionObject = get_right_member(file_obj, ["SectionObjectPointer.DataSectionObject"])
@@ -2096,7 +2099,7 @@ def dump_file(offset, nt, directory=None):
             subsection_offset = control_area.vol.offset + control_area.vol.size
             subsection = def_conf.object(def_conf.symbols + constants.BANG + '_SUBSECTION',
                                        offset=subsection_offset,
-                                       layer_name='primary')
+                                       layer_name=self.config['primary'])
 
             seen_subs = []
             # Walk the subsection list
@@ -2115,7 +2118,7 @@ def dump_file(offset, nt, directory=None):
                     ptecount += 1
                     mmpte = def_conf.object(def_conf.symbols + constants.BANG + '_MMPTE',
                                                  offset=pteoffset,
-                                                 layer_name='primary')
+                                                 layer_name=self.config['primary'])
 
                     try:
                         if mmpte.u.Hard.Valid == 1:
@@ -2168,14 +2171,14 @@ def dump_file(offset, nt, directory=None):
             # Iterate through the entries
             for _i in range(0, 128):
                 vacb_addr = ArrayHead + (_i * size_of_pointer)
-                vacb_entry = int(_pointer_struct.unpack(self.context.layers['primary'].read(vacb_addr, size_of_pointer))[0])
+                vacb_entry = int(_pointer_struct.unpack(self.context.layers[self.config['primary']].read(vacb_addr, size_of_pointer))[0])
 
                 # Check if the VACB entry is in use
                 if vacb_entry == 0x0:
                     continue
 
                 Vacb = def_conf.object(def_conf.symbols + constants.BANG + '_VACB',
-                                       offset=vacb_entry, layer_name='primary')
+                                       offset=vacb_entry, layer_name=self.config['primary'])
 
                 if Vacb.SharedCacheMap.real == scm.vol.offset:
                     vacbinfo = extract_vacb(Vacb, 0x40000, scm)
@@ -2265,23 +2268,23 @@ def dump_file(offset, nt, directory=None):
                 _i = 0
                 for _i in range(0, full_blocks):
                     vacb_addr = ArrayHead + (_i * size_of_pointer)
-                    vacb_entry = int(_pointer_struct.unpack(self.context.layers['primary'].read(vacb_addr, size_of_pointer))[0])
+                    vacb_entry = int(_pointer_struct.unpack(self.context.layers[self.config['primary']].read(vacb_addr, size_of_pointer))[0])
                     if (not vacb_entry) or (not def_conf.layers['primary'].is_valid(vacb_entry)):
                         continue
                     Vacb = def_conf.object(def_conf.symbols + constants.BANG + '_VACB',
-                                           offset = vacb_entry, layer_name = 'primary')
+                                           offset = vacb_entry, layer_name = self.config['primary'])
                     vacbinfo = extract_vacb(Vacb, 0x40000, scm)
                     if vacbinfo:
                         vacbary.append(vacbinfo)
                 if left_over > 0:
                     vacb_addr = ArrayHead + ((_i + 1) * size_of_pointer)
-                    vacb_entry = int(_pointer_struct.unpack(self.context.layers['primary'].read(vacb_addr, size_of_pointer))[0])
+                    vacb_entry = int(_pointer_struct.unpack(self.context.layers[self.config['primary']].read(vacb_addr, size_of_pointer))[0])
 
                     if (not vacb_entry) or (not def_conf.layers['primary'].is_valid(vacb_entry)):
                         return vacbary
 
                     Vacb = def_conf.object(def_conf.symbols + constants.BANG + '_VACB',
-                                           offset=vacb_entry, layer_name='primary')
+                                           offset=vacb_entry, layer_name=self.config['primary'])
                     vacbinfo = extract_vacb(Vacb, left_over, scm)
                     if vacbinfo:
                         vacbary.append(vacbinfo)
@@ -2299,12 +2302,12 @@ def dump_file(offset, nt, directory=None):
                 ArrayHead = Vacbs.real
                 for _i in range(0, 128):
                     vacb_addr = ArrayHead + (_i * size_of_pointer)
-                    vacb_entry = int(_pointer_struct.unpack(self.context.layers['primary'].read(vacb_addr, size_of_pointer))[0])
+                    vacb_entry = int(_pointer_struct.unpack(self.context.layers[self.config['primary']].read(vacb_addr, size_of_pointer))[0])
 
                     if vacb_entry == 0x0:
                         continue
                     Vacb = def_conf.object(def_conf.symbols + constants.BANG + '_VACB',
-                                           offset=vacb_entry, layer_name='primary')
+                                           offset=vacb_entry, layer_name=self.config['primary'])
                     if Vacb.SharedCacheMap.real == scm.vol.offset:
                         vacbinfo = extract_vacb(Vacb, 0x40000, scm)
                         if vacbinfo:
@@ -2398,11 +2401,16 @@ def dump_explorer_file(offset, directory=None):
     self = volself
     with lock:
         def_conf = volself.context.clone()
-    def_conf.kaddr_space = volself.context.layers['primary']
+
+    def_conf.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+    def_conf.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
+    volself.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+    volself.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
+
+    def_conf.kaddr_space = volself.context.layers[self.config['primary']]
     def_conf.kaddr_space.vtop = def_conf.kaddr_space.translate
     kvo = def_conf.layers[self.config['primary']].config["kernel_virtual_offset"]
     ntkrnlmp = def_conf.module(self.config['nt_symbols'], layer_name=self.config['primary'], offset=kvo)
-
 
     # Validate parametets
     if self._config.DUMP_DIR == None:
@@ -2411,7 +2419,6 @@ def dump_explorer_file(offset, directory=None):
     elif not os.path.isdir(self._config.DUMP_DIR):
         vollog.log(constants.LOGLEVEL_VVV,  self._config.DUMP_DIR + " is not a directory")
         return
-
     df_calc = dump_file(offset, ntkrnlmp, directory)
 
     file_mem = {}
@@ -2849,7 +2856,7 @@ def get_security_info(sd, addr_space, obj_type, ntkrnlmp, volself):
                                                             class_types = {'_ACE': objects.StructType,
                                                                            '_ACE_HEADER': objects.StructType})
     except Exception:
-        fn = os.path.join(os.path.dirname(vol_path), 'volatility', 'framework', 'symbols', 'windows', 'access-control-entry.json')
+        fn = os.path.join(os.path.dirname(vol_path), 'volatility3', 'framework', 'symbols', 'windows', 'access-control-entry.json')
         ACE_JSON = {
 	"metadata": {
 		"producer": {
@@ -4830,7 +4837,7 @@ class RegViewer(Frame):
         # Get the values.
         for v in key.get_values():
             try:
-                typ = RegValueTypes.get(v.Type).name
+                typ = RegValueTypes(v.Type).name
             except (exceptions.InvalidAddressException, RegistryFormatException) as excp:
                 vollog.debug(excp)
                 typ = 'UNKNOWN'#renderers.UnreadableValue()
@@ -4839,9 +4846,9 @@ class RegViewer(Frame):
 
                 if isinstance(value_data, int):
                     value_data = value_data#format_hints.MultiTypeData(value_data, encoding='utf-8')
-                elif RegValueTypes.get(v.Type) == RegValueTypes.REG_BINARY:
+                elif RegValueTypes(v.Type) == RegValueTypes.REG_BINARY:
                     value_data = value_data#format_hints.MultiTypeData(value_data, show_hex=True)
-                elif RegValueTypes.get(v.Type) == RegValueTypes.REG_MULTI_SZ:
+                elif RegValueTypes(v.Type) == RegValueTypes.REG_MULTI_SZ:
                     value_data = value_data.decode("utf-16-le")#format_hints.MultiTypeData(value_data,encoding='utf-16-le',split_nulls=True)
                 else:
                     value_data = value_data.decode("utf-16-le")#format_hints.MultiTypeData(value_data, encoding='utf-16-le')
@@ -5788,11 +5795,14 @@ class FileExplorer(Frame):
 
                     # Create the file.
                     with open(os.path.join(current_path, key), 'wb') as my_file:
-                        my_file.write(good)
+                        if type(good) is str:
+                            my_file.write(good.encode())
+                        else:
+                            my_file.write(good)
 
                     print("[+] File Explorer - Dump File Done ({}).".format(key))
-                except Exception:
-                    print("[-] File Explorer - Dump File Failed ({}).".format(key))
+                except Exception as ex:
+                    print("[-] File Explorer - Dump File Failed ({}, {}).".format(key, ex))
     def Dump(self):
         '''
         This function check if the selected item is directory or a file and call the suitable function.
@@ -5824,8 +5834,8 @@ class FileExplorer(Frame):
             clicked_addr = values[-1]
             dump_explorer_file(clicked_addr)
             queue.put((messagebox.showinfo, ("Dump File", "File Explorer - Dump File Done ({}).".format(values[0]), ('**kwargs', {'parent': self}))))
-        except Exception:
-            queue.put((messagebox.showerror, ("Dump File", "File Explorer - Dump File Failed ({}).".format(values[0]), ('**kwargs', {'parent': self}))))
+        except Exception as ex:
+            queue.put((messagebox.showerror, ("Dump File", "File Explorer - Dump File Failed ({}, {}).".format(values[0], ex), ('**kwargs', {'parent': self}))))
 
     def HexDump(self):
         '''
@@ -6253,7 +6263,7 @@ class StructExplorer(Explorer):
         if self.sa_self.context.layers['memory_layer'].name == self.layer_name:
             struct = self.sa_self.context.object('nt_symbols1!' + struct_type, offset=int(struct_addr),
                                                  layer_name='memory_layer',
-                                                 native_layer_name='primary')
+                                                 native_layer_name=volself.config['primary'])
         else:
             struct = self.sa_self.context.object('nt_symbols1!' + struct_type, offset=int(struct_addr),
                                                  layer_name=self.layer_name)
@@ -6300,7 +6310,7 @@ class StructExplorer(Explorer):
         if self.sa_self.context.layers['memory_layer'].name == self.layer_name:
             struct = self.sa_self.context.object('nt_symbols1!' + struct_type, offset=int(struct_addr),
                                                  layer_name='memory_layer',
-                                                 native_layer_name='primary')
+                                                 native_layer_name=volself.config['primary'])
         else:
             struct = self.sa_self.context.object('nt_symbols1!' + struct_type, offset=int(struct_addr),
                                                  layer_name=self.layer_name)
@@ -6377,7 +6387,7 @@ class StructExplorer(Explorer):
             p_type = title[len('Struct Analyzer  '): title.rfind('(') - 1]
             addr = title[title.rfind('(') + 1: title.rfind(')')]
             if self.sa_self.context.layers['memory_layer'].name == self.layer_name:
-                struct = self.sa_self.context.object('nt_symbols1!' + p_type if constants.BANG not in p_type else p_type, offset=int(addr),layer_name='memory_layer', native_layer_name='primary')
+                struct = self.sa_self.context.object('nt_symbols1!' + p_type if constants.BANG not in p_type else p_type, offset=int(addr),layer_name='memory_layer', native_layer_name=volself.config['primary'])
             else:
                 struct = self.sa_self.context.object('nt_symbols1!' + p_type if constants.BANG not in p_type else p_type, offset=int(addr), layer_name=self.layer_name)
             # Walk from the base struct to the current struct.
@@ -6636,7 +6646,7 @@ class StructExplorer(Explorer):
                 if self.sa_self.context.layers['memory_layer'].name == self.layer_name:
                     struct = self.sa_self.context.object('nt_symbols1!' + struct_type, offset=int(struct_addr),
                                                          layer_name='memory_layer',
-                                                         native_layer_name='primary')
+                                                         native_layer_name=volself.config['primary'])
                 else:
                     struct = self.sa_self.context.object('nt_symbols1!' + struct_type, offset=int(struct_addr),
                                                          layer_name=self.layer_name)
@@ -6716,7 +6726,7 @@ class StructExplorer(Explorer):
         try:
             if self.sa_self.context.layers['memory_layer'].name == self.layer_name:
                 struct = self.sa_self.context.object('nt_symbols1!' + struct_type, offset=int(struct_addr), layer_name='memory_layer',
-                                                     native_layer_name='primary')
+                                                     native_layer_name=volself.config['primary'])
             else:
                 struct = self.sa_self.context.object('nt_symbols1!' + struct_type, offset=int(struct_addr), layer_name=self.layer_name)
 
@@ -9318,18 +9328,19 @@ class DllsTable(TreeTable):
             except exceptions.InvalidAddressException:
                 name = 'UnreadbleDLLName'
 
-            filedata = interfaces.plugins.FileInterface("{0}.{1:#x}.{2:#x}.dmp".format(name, dllEntry.vol.offset, dllEntry.DllBase))
+            preferred_filename = objects.utility.array_to_string(task.ImageFileName) + str(task.UniqueProcessId) + name
+            with lock:
+                filedata = volself.open(preferred_filename)
 
             for offset, data in dos_header.reconstruct():
-                filedata.data.seek(offset)
-                filedata.data.write(data)
+                filedata.seek(offset)
+                filedata.write(data)
 
-            filedata.preferred_filename = objects.utility.array_to_string(task.ImageFileName) + str(task.UniqueProcessId) + name
-            with lock:
-                volself.produce_file(filedata)
+            filedata.close()
+
             result = 'Success'
-        except:
-            result = 'Unable to dump this PE'
+        except Exception as ex:
+            result = 'Unable to dump this PE ({})'.format(ex)
 
         def show_message_func(result):
             messagebox.showinfo("DllDump done.", result, parent=self)
@@ -9404,27 +9415,28 @@ class DllsTable(TreeTable):
             except exceptions.InvalidAddressException:
                 name = 'UnreadbleDLLName'
 
-            filedata = interfaces.plugins.FileInterface(
-                "{0}.{1:#x}.{2:#x}.dmp".format(name, dllEntry.vol.offset, dllEntry.DllBase))
+            filedata = volself.open(objects.utility.array_to_string(task.ImageFileName) + str(
+                task.UniqueProcessId) + name)
 
             for offset, data in dos_header.reconstruct():
-                filedata.data.seek(offset)
-                filedata.data.write(data)
+                filedata.seek(offset)
+                filedata.write(data)
 
-            filedata.preferred_filename = objects.utility.array_to_string(task.ImageFileName) + str(
-                task.UniqueProcessId) + name
+            filedata.close()
 
             dump_file = objects.utility.array_to_string(task.ImageFileName) + str(
                 task.UniqueProcessId) + name
 
-            create_hex_dump_fast('{} ()'.format(dump_file, 'Memory' if mem else 'File'), filedata.data.getvalue(), 16)
+            filedata = open(filedata.preferred_filename, "rb")
+            create_hex_dump_fast('{} ()'.format(dump_file, 'Memory' if mem else 'File'), filedata.read(), 16)
+            filedata.close()
 
-        except Exception:
-            def show_message_func():
-                messagebox.showerror("Error", "Unable to get this {} HexDump".format('memory' if mem else 'file'),
+        except Exception as ex:
+            def show_message_func(ex):
+                messagebox.showerror("Error", "Unable to get this {} HexDump ({})".format('memory' if mem else 'file', ex),
                                      parent=self)
 
-            queue.put((show_message_func, ()))
+            queue.put((show_message_func, (ex,)))
 
     def Properties(self, event, top_level=True):
         '''
@@ -9511,15 +9523,17 @@ class DllsTable(TreeTable):
             queue.put((messagebox.showerror, ("Error", "Unnable to get nt headers (some importent data probably paged out)\n If this file have additional information to his name and address than this function is probably accessable from another process address space", ('**kwargs', {'parent': self}))))
             return
 
-        filedata = interfaces.plugins.FileInterface(
-            "{0}.{1:#x}.{2:#x}.dmp".format('tmp_imports', module, 0))
+        filedata = volself.open("{0}.{1:#x}.{2:#x}.dmp".format('tmp_imports', module, 0))
 
         for offset, data in pe_file.reconstruct():
-            filedata.data.seek(offset)
-            filedata.data.write(data)
+            filedata.seek(offset)
+            filedata.write(data)
 
-        #print('file_len', len(filedata.data.getvalue()), 'mod addr =', module)
-        pe = pefile.PE(data=filedata.data.getvalue(), fast_load=True)
+        filedata.close()
+        filedata = open(filedata.preferred_filename, "rb")
+        file_data = filedata.read()
+        pe = pefile.PE(data=file_data, fast_load=True)
+        filedata.close()
 
         imports = exports = []
 
@@ -9550,7 +9564,7 @@ class DllsTable(TreeTable):
             mem_strings = 'Mem Strings Not supported yet'
 
             #image_strings_list = list(pefile.get_image(unsafe=False, memory=False, fix=False))
-            image_strings = filedata.data.getvalue()#"".join(i[1] for i in image_strings_list)
+            image_strings = file_data#"".join(i[1] for i in image_strings_list)
             image_strings = '\n'.join(get_ascii_unicode(image_strings, True)[0])
         else:
             mem_strings=False
@@ -9867,26 +9881,28 @@ class ProcessesTable(TreeTable):
             dos_header = df_conf.object(pe_table_name + constants.BANG + "_IMAGE_DOS_HEADER",
                                         offset=peb.ImageBaseAddress,
                                         layer_name=proc_layer_name)
-            filedata = interfaces.plugins.FileInterface("pid.{0}.{1:#x}.dmp".format(task.UniqueProcessId,
-                                                                                    peb.ImageBaseAddress))
+            filedata = volself.open("executableVT." + objects.utility.array_to_string(task.ImageFileName) + str(
+                    task.UniqueProcessId) + ".exe")
             for offset, data in dos_header.reconstruct():
-                filedata.data.seek(offset)
-                filedata.data.write(data)
+                filedata.seek(offset)
+                filedata.write(data)
+
+            filedata.close()
+            preferred_filename = filedata.preferred_filename
+            filedata = open(filedata.preferred_filename, "rb")
 
             # Check the hash else upload the file to virus total.
             if vt_type == 'hash':
-                hash = sha256(filedata.data.getvalue()).hexdigest()
+                hash = sha256(filedata.read()).hexdigest()
+                filedata.close()
                 threading.Thread(target=virus_total, args=(hash, process_name, pid, file_path, api_key)).start()
             elif vt_type == 'upload':
-                filedata.preferred_filename = volself._config.DUMP_DIR + r"\executableVT." + objects.utility.array_to_string(task.ImageFileName) + str(
-                    task.UniqueProcessId) + ".exe"
-                volself.produce_file(filedata)
                 #os.remove(filedata.preferred_filename)
-                threading.Thread(target=upload_to_virus_total, args=(process_name, filedata.preferred_filename, api_key)).start()
-        except Exception:
-            def show_message_func():
-                messagebox.showerror("Error", "Unable to get Virus total reasult (please check internet connection and validate the api key)", parent=self)
-            queue.put((show_message_func, ()))
+                threading.Thread(target=upload_to_virus_total, args=(process_name, preferred_filename, api_key)).start()
+        except Exception as ex:
+            def show_message_func(ex):
+                messagebox.showerror("Error", "Unable to get Virus total reasult (please check internet connection and validate the api key) ({})".format(ex), parent=self)
+            queue.put((show_message_func, (ex,)))
 
     def run_struct_analyze(self, struct_type):
         ''' get address and sent to teal Struct Analyzer function. '''
@@ -10053,19 +10069,16 @@ class ProcessesTable(TreeTable):
             dos_header = df_conf.object(pe_table_name + constants.BANG + "_IMAGE_DOS_HEADER",
                                         offset=peb.ImageBaseAddress,
                                         layer_name=proc_layer_name)
-            filedata = interfaces.plugins.FileInterface("pid.{0}.{1:#x}.dmp".format(task.UniqueProcessId,
-                                                                                    peb.ImageBaseAddress))
-            for offset, data in dos_header.reconstruct():
-                filedata.data.seek(offset)
-                filedata.data.write(data)
-
-            filedata.preferred_filename = volself._config.DUMP_DIR + r"\executable." + objects.utility.array_to_string(task.ImageFileName) + str(
-                task.UniqueProcessId) + ".exe"
             with lock:
-                volself.produce_file(filedata)
+                filedata = volself.open("executable." + objects.utility.array_to_string(task.ImageFileName) + str(
+                    task.UniqueProcessId) + ".exe")
+            for offset, data in dos_header.reconstruct():
+                filedata.seek(offset)
+                filedata.write(data)
+            filedata.close()
             result = 'Success' + filedata.preferred_filename
-        except:
-            result = 'Unable to dump this process'
+        except Exception as ex:
+            result = 'Unable to dump this process ({})'.format(ex)
 
         #PopUp result
         def show_message_func(result):
@@ -10108,25 +10121,24 @@ class ProcessesTable(TreeTable):
             dos_header = df_conf.object(pe_table_name + constants.BANG + "_IMAGE_DOS_HEADER",
                                         offset=peb.ImageBaseAddress,
                                         layer_name=proc_layer_name)
-            filedata = interfaces.plugins.FileInterface("pid.{0}.{1:#x}.dmp".format(task.UniqueProcessId,
-                                                                                    peb.ImageBaseAddress))
+            filedata = volself.open("executable." + objects.utility.array_to_string(
+                task.ImageFileName) + str(task.UniqueProcessId) + ".exe")
             for offset, data in dos_header.reconstruct():
-                filedata.data.seek(offset)
-                filedata.data.write(data)
-
-            filedata.preferred_filename = volself._config.DUMP_DIR + r"\executable." + objects.utility.array_to_string(
-                task.ImageFileName) + str(task.UniqueProcessId) + ".exe"
+                filedata.seek(offset)
+                filedata.write(data)
 
             # Give a name to the dump file and dump it.
             dump_file = "executable." + objects.utility.array_to_string(task.ImageFileName) + str(task.UniqueProcessId) + ".exe"
 
-            create_hex_dump_fast('{} ()'.format(dump_file, 'Memory' if mem else 'File'), filedata.data.getvalue(), 16)
+            filedata = open(filedata.preferred_filename, "rb")
+            create_hex_dump_fast('{} ()'.format(dump_file, 'Memory' if mem else 'File'), filedata.read(), 16)
+            filedata.close()
 
         # Alert the user if the funciton fail
-        except Exception:
-            def show_message_func():
-                messagebox.showerror("Error", "Unable to get this {} HexDump".format('memory' if mem else 'file'), parent=self)
-            queue.put((show_message_func, ()))
+        except Exception as ex:
+            def show_message_func(ex):
+                messagebox.showerror("Error", "Unable to get this {} HexDump ({})".format('memory' if mem else 'file', ex), parent=self)
+            queue.put((show_message_func, (ex,)))
 
     def process_memory(self, event=None):
         '''
@@ -10947,8 +10959,8 @@ class HelpMe(Frame):
 
 class Vol3xp(interfaces.plugins.PluginInterface):
     """Memory Explorer (GUI plugin)"""
-
-    _version = (1, 0, 0)
+    _required_framework_version = (2, 0, 0)
+    _version = (2, 0, 0)
 
     def __init__(self, *args, **kwargs): # Fix init from vol2
         global location, dump_dir, profile, api_key, vol_path
@@ -10959,6 +10971,8 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         volself = self
         self._config = self.config
         self.threads = []
+        self.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+        self.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
         self.kvo = self.context.layers[self.config['primary']].config["kernel_virtual_offset"]
         self.ntkrnlmp = self.context.module(self.config['nt_symbols'], layer_name=self.config['primary'], offset=self.kvo)
 
@@ -11048,8 +11062,25 @@ class Vol3xp(interfaces.plugins.PluginInterface):
             temp_json = json.load(file_handle)['privileges']
             self.privilege_info = {int(priv_num): temp_json[priv_num] for priv_num in temp_json}
 
+        from volatility3.framework import automagic, plugins
+        automagics = automagic.choose_automagic(automagic.available(self._context), getsids.GetSIDs)
+        plugin = plugins.construct_plugin(self.context, automagics, getsids.GetSIDs, self.config_path,
+                                          self._progress_callback, self.open)
+
+        #kernel = self.context.modules[self.config['kernel']]
+
         self.get_sids_class_conf = self.context.clone()
-        self.get_sids_class_conf.kaddr = volself.config['primary']
+        self.get_sids_class_conf.kaddr = volself.config['primary']#kernel.layer_name
+        unsatisfied = getsids.GetSIDs.unsatisfied(self.get_sids_class_conf, self.config_path)
+        errors = automagic.run(automagics, self.get_sids_class_conf, getsids.GetSIDs, self.config_path)
+        if unsatisfied:
+            print("bla", errors, unsatisfied)
+            for error in errors:
+                error_string = [x for x in error.format_exception_only()][-1]
+                vollog.warning(f"Automagic exception occurred: {error_string[:-1]}")
+                vollog.log(constants.LOGLEVEL_V, "".join(error.format(chain=True)))
+            raise exceptions.UnsatisfiedException(unsatisfied)
+
         self.get_sids_class = getsids.GetSIDs(self.get_sids_class_conf, self.config_path)
 
         self.VolatilityNoneType = (renderers.UnreadableValue, renderers.NotApplicableValue, renderers.UnparsableValue, renderers.NotAvailableValue)
@@ -11057,9 +11088,8 @@ class Vol3xp(interfaces.plugins.PluginInterface):
     @classmethod
     def get_requirements(cls):
         return [
-            requirements.TranslationLayerRequirement(name = 'primary',
-                                                     description = 'Memory layer for the kernel',
-                                                     architectures = ["Intel32", "Intel64"]),
+            requirements.ModuleRequirement(name='kernel', description='Windows kernel',
+                                           architectures=["Intel32", "Intel64"]),
             requirements.SymbolTableRequirement(name = "nt_symbols", description = "Windows kernel symbols"),
             requirements.StringRequirement(name = 'DUMP_DIR',
                                            description = 'Directory in which to dump executable files',
@@ -11072,7 +11102,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
             requirements.StringRequirement(name='API_KEY',
                                            description='virus total api key',
                                            default=None,
-                                           optional=True)]
+                                           optional=True),]
 
     def popup_options(self, event=None):
         '''
@@ -11167,6 +11197,8 @@ class Vol3xp(interfaces.plugins.PluginInterface):
             elif item == 'Virus Total API Key':
                 self._config.API_KEY = dict[item]
                 api_key = dict[item]
+                if not api_key:
+                    api_key = ""
 
     def run_struct_analyze(self, struct_type, tree):
         '''
@@ -11199,7 +11231,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         This function get all the process handles to the process_handles global.
         '''
 
-        import volatility.plugins.windows.handles as handlesplugin
+        import volatility3.plugins.windows.handles as handlesplugin
         global process_handles
         global done_run
         global lock
@@ -12014,15 +12046,18 @@ class Vol3xp(interfaces.plugins.PluginInterface):
                                                      offset=my_module.DllBase,
                                                      layer_name=process_addr_space)
 
-                    filedata = interfaces.plugins.FileInterface(
+                    filedata = self.open(
                         "{0}.{1:#x}.{2:#x}.dmp".format('tmp_imports', my_module.vol.offset, my_module.DllBase))
                     for offset, data in dos_header.reconstruct():
-                        filedata.data.seek(offset)
-                        filedata.data.write(data)
+                        filedata.seek(offset)
+                        filedata.write(data)
                 except (exceptions.InvalidAddressException, ValueError):
                     # Failed to reconstruct() | my_module is invalid | invalid mz.
                     continue
-                pe = pefile.PE(data=filedata.data.getvalue(), fast_load=True)
+                filedata.close()
+                filedata = open(filedata.preferred_filename, 'rb')
+                pe = pefile.PE(data=filedata.read(), fast_load=True)
+                filedata.close()
                 pe.parse_data_directories(directories=pefile.DIRECTORY_ENTRY['IMAGE_DIRECTORY_ENTRY_RESOURCE'])
                 files_info[mod_path.lower()] = {}
 
@@ -12058,8 +12093,8 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         # If windows xp
         if self.os_version['Major'] < 6:
             return# Not Supported Yet (vol3 does not support network information befor windows vista)
-            from volatility.plugins import connscan, sockscan
-            from volatility import protos
+            from volatility3.plugins import connscan, sockscan
+            from volatility3 import protos
 
             my_sock_plug = [(str(o.obj_offset), int(o.Pid), int(o.LocalPort), int(o.Protocol),
                              str(protos.protos.get(o.Protocol.v(), "-")), str(o.LocalIpAddress),
@@ -12100,7 +12135,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
                 process_connections[pid].append(c_data)
 
         else:
-            import volatility.plugins.windows.netscan as netscan
+            import volatility3.plugins.windows.netscan as netscan
             my_connections_plug = netscan.NetScan(my_connections_conf, self.config_path)
 
             # Get all connections from netscan.calcuate()
@@ -12227,14 +12262,16 @@ class Vol3xp(interfaces.plugins.PluginInterface):
                                         offset=my_module.DllBase,
                                         layer_name=proc_layer_name)
 
-            filedata = interfaces.plugins.FileInterface(
-                "{0}.{1:#x}.{2:#x}.dmp".format('tmp_imports', my_module.vol.offset, my_module.DllBase))
+            filedata = self.open("{0}.{1:#x}.{2:#x}.dmp".format('tmp_imports', my_module.vol.offset, my_module.DllBase))
 
             for offset, data in dos_header.reconstruct():
-                filedata.data.seek(offset)
-                filedata.data.write(data)
+                filedata.seek(offset)
+                filedata.write(data)
 
-            pe = pefile.PE(data=filedata.data.getvalue(), fast_load=True)
+            filedata.close()
+            filedata = open(filedata.preferred_filename, "rb")
+            pe = pefile.PE(data=filedata.read(), fast_load=True)
+            filedata.close()
             pe.parse_data_directories(directories=pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_IMPORT"])
             if hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):
                 process_imports[int(pid)] = [(imp.name.decode(errors='replace') if imp.name else 'None', entry.dll.decode(errors='replace') if entry.dll else 'None', hex(imp.address) if imp.address else hex(-1),  hex(imp.hint) if imp.hint else hex(-1)) for entry in pe.DIRECTORY_ENTRY_IMPORT for imp in entry.imports]
@@ -12252,7 +12289,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         global done_run
         global queue
         try:
-            import volatility.plugins.windows.svcscan as svcscan
+            import volatility3.plugins.windows.svcscan as svcscan
         except ImportError:
             vollog.log(constants.LOGLEVEL_VVV, "Please install yara (to get services information).")
             return
@@ -12537,7 +12574,10 @@ class Vol3xp(interfaces.plugins.PluginInterface):
             for key in node.get_subkeys():
 
                 # Get reg path
-                reg_path = str(key.get_key_path()).replace('\\\\', '\\').split('\\')
+                try:
+                    reg_path = str(key.get_key_path()).replace('\\\\', '\\').split('\\')
+                except AttributeError:
+                    return
 
                 # Send the information for the self.order_right function to insert the data in the right place inside the reg_dict
                 self.order_right(reg_dict, reg_path, str(conversion.wintime_to_datetime(key.LastWriteTime.QuadPart)))
@@ -13487,9 +13527,12 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         global location, dump_dir, profile, api_key, vol_path
         file_name = save_file_name = save_file_name or os.path.join(location_path or self._config.DUMP_DIR,
                                                                     r'vol3xp_{}.atz'.format(time.time()))
+        if not done_run['api_key']:
+            done_run['api_key'] = ''
+            api_key = ''
         #print(done_run[process_dlls])
         for key in done_run:
-            #print(key)
+            print(key)
             if (not done_run[key]) and key in globals() and len(globals()[key]) > 0:
                 done_run[key] = globals()[key]
 
@@ -14563,13 +14606,16 @@ class Vol3xp(interfaces.plugins.PluginInterface):
 
 class StructAnalyzer(interfaces.plugins.PluginInterface):
     '''Analyze an object (Gui).'''
-    _version = (1, 0, 0)
+    _required_framework_version = (2, 0, 0)
+    _version = (2, 0, 0)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         config = self._config = self.config
         self.kaddr_space = list(self.context.layers.keys())[-1]
         self._config.verbose = True
         self._deep = 4
+        self.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+        self.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
         self.kvo = self.context.layers[self.config['primary']].config["kernel_virtual_offset"]
         self.ntkrnlmp = self.context.module(self.config['nt_symbols'], layer_name=self.config['primary'], offset=0)
 
@@ -14577,9 +14623,12 @@ class StructAnalyzer(interfaces.plugins.PluginInterface):
         self._config.ADDR = self.config.get('ADDR', None) or self.context.ADDR if hasattr(self.context, 'ADDR') or self.config.get('ADDR', None) else None
         self._config.PID = self.context.PID if hasattr(self.context, 'PID') else self.config.get('PID', None)
 
+        if type(config.PID) is str and config.PID.startswith('layer_name'):
+            config.PID = config.PID.split('_')[2].replace("Process", '')
         if (not config.PID) or (str(config.PID).lower() != "physical" and not str(config.PID).startswith('primary')):
             if config.PID:
                 for task in tasks.PsList.list_processes(self.context, self.config['primary'], self.config['nt_symbols']):
+                    print(config.PID, task.UniqueProcessId)
                     if int(task.UniqueProcessId) == int(config.PID):
                         print('[!] Struct Analyzer run on with address space of: {} ({})'.format(objects.utility.array_to_string(task.ImageFileName), int(task.UniqueProcessId)))
                         config.PID = self.kaddr_space = task.add_process_layer()
@@ -14615,9 +14664,8 @@ class StructAnalyzer(interfaces.plugins.PluginInterface):
     @classmethod
     def get_requirements(cls):
         return [
-            requirements.TranslationLayerRequirement(name = 'primary',
-                                                     description = 'Memory layer for the kernel',
-                                                     architectures = ["Intel32", "Intel64"]),
+            requirements.ModuleRequirement(name='kernel', description='Windows kernel',
+                                           architectures=["Intel32", "Intel64"]),
             requirements.SymbolTableRequirement(name = "nt_symbols", description = "Windows kernel symbols"),
             requirements.StringRequirement(name = 'STRUCT',
                                            description = 'The Struct Type',
@@ -14809,7 +14857,8 @@ class StructAnalyzer(interfaces.plugins.PluginInterface):
 
 class WinObjGui(interfaces.plugins.PluginInterface):
     '''WinObj (Explorer GUI plugin)'''
-    _version = (1, 0, 0)
+    _required_framework_version = (2, 0, 0)
+    _version = (2, 0, 0)
 
     def __init__(self, *args, **kwargs): # Fix init from vol2
         global location, dump_dir, profile, api_key, vol_path
@@ -14822,6 +14871,8 @@ class WinObjGui(interfaces.plugins.PluginInterface):
         self._config = self.config
         self.kaddr_space = list(self.context.layers.keys())[-1]
         self._config.verbose = False#True
+        self.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+        self.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
         self.kvo = self.context.layers[self.config['primary']].config["kernel_virtual_offset"]
         self.ntkrnlmp = self.context.module(self.config['nt_symbols'], layer_name=self.config['primary'], offset=self.kvo)
         self._KUSER_SHARED_DATA = info.Info.get_kuser_structure(self.context, self.config['primary'], self.config['nt_symbols'])
@@ -14835,9 +14886,8 @@ class WinObjGui(interfaces.plugins.PluginInterface):
     @classmethod
     def get_requirements(cls):
         return [
-            requirements.TranslationLayerRequirement(name = 'primary',
-                                                     description = 'Memory layer for the kernel',
-                                                     architectures = ["Intel32", "Intel64"]),
+            requirements.ModuleRequirement(name='kernel', description='Windows kernel',
+                                           architectures=["Intel32", "Intel64"]),
             requirements.SymbolTableRequirement(name = "nt_symbols", description = "Windows kernel symbols"),
             requirements.StringRequirement(name = 'GET_DICT',
                                            description = 'Path To Dump Info',
@@ -15176,11 +15226,14 @@ class MftParserGui(common.AbstractWindowsCommand):
 
 class FileScanGui(interfaces.plugins.PluginInterface):
     '''FileScan (Explorer GUI plugin)'''
-    _version = (1, 0, 0)
+    _required_framework_version = (2, 0, 0)
+    _version = (2, 0, 0)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._config = self.config
+        self.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+        self.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
         self.kvo = self.context.layers[self.config['primary']].config["kernel_virtual_offset"]
         self.ntkrnlmp = self.context.module(self.config['nt_symbols'], layer_name=self.config['primary'], offset=self.kvo)
         self._KUSER_SHARED_DATA = info.Info.get_kuser_structure(self.context, self.config['primary'], self.config['nt_symbols'])
@@ -15191,9 +15244,8 @@ class FileScanGui(interfaces.plugins.PluginInterface):
     @classmethod
     def get_requirements(cls):
         return [
-            requirements.TranslationLayerRequirement(name = 'primary',
-                                                     description = 'Memory layer for the kernel',
-                                                     architectures = ["Intel32", "Intel64"]),
+            requirements.ModuleRequirement(name='kernel', description='Windows kernel',
+                                           architectures=["Intel32", "Intel64"]),
             requirements.SymbolTableRequirement(name = "nt_symbols", description = "Windows kernel symbols"),
             requirements.StringRequirement(name='DUMP_DIR',
                                            description='Directory in which to dump executable files',
@@ -15273,7 +15325,7 @@ class FileScanGui(interfaces.plugins.PluginInterface):
 
         if True or int(self._KUSER_SHARED_DATA.NtMajorVersion) == 10: # TOFIX when there is shimecachemem plugin
             # Getting also information about execution program.
-            from volatility.plugins.windows.registry import userassist
+            from volatility3.plugins.windows.registry import userassist
 
             # Getting userassist data.
             self._config.HIVE_OFFSET = None
@@ -15285,7 +15337,7 @@ class FileScanGui(interfaces.plugins.PluginInterface):
 
             """ # TOFIX add them to when the plugin available
             # Getting shimcache data.
-            from volatility.plugins.registry import shimcache
+            from volatility3.plugins.registry import shimcache
             self._config.HIVE_OFFSET = None
             sc = shimcache.ShimCache(self._config)
             calc = sc.calculate()
@@ -15293,7 +15345,7 @@ class FileScanGui(interfaces.plugins.PluginInterface):
             files_scan['?shimcache?'] = shimcache_data
 
             # Getting amcache data.
-            from volatility.plugins.registry import amcache
+            from volatility3.plugins.registry import amcache
             self._config.HIVE_OFFSET = None
             amc = amcache.AmCache(self._config)
             calc = amc.calculate()
@@ -15302,11 +15354,11 @@ class FileScanGui(interfaces.plugins.PluginInterface):
             """
         else:
             try:
-                from volatility.plugins import shimcachemem
+                from volatility3.plugins import shimcachemem
                 has_shimcachemem = True
             except ImportError:
                 try:
-                    from volatility.community.plugins import shimcachemem
+                    from volatility3.community.plugins import shimcachemem
                     has_shimcachemem = True
                 except ImportError:
                     has_shimcachemem = False
@@ -15679,16 +15731,16 @@ def main():
         parser.add_argument('-a', '--apikey', help='Virus Total API Key to support upload and check hashes using virus total db')
         args = parser.parse_args()
 
-        import volatility
-        from volatility.framework.automagic import stacker
+        import volatility3
+        from volatility3.framework.automagic import stacker
         from urllib import request
-        from volatility.framework import interfaces
-        from volatility.cli import PrintedProgress
-        from volatility.framework import contexts, automagic, plugins
+        from volatility3.framework import interfaces
+        from volatility3.cli import PrintedProgress
+        from volatility3.framework import contexts, automagic, plugins
         ctx = contexts.Context()
         automagics = automagic.available(ctx)
-        failures = volatility.framework.import_files(volatility.plugins, True)
-        plugin_list = volatility.framework.list_plugins()
+        failures = volatility3.framework.import_files(volatility3.plugins, True)
+        plugin_list = volatility3.framework.list_plugins()
         plugin_name = 'windows.volexp.Vol3xp'
         plugin = plugin_list[plugin_name]
         base_config_path = "plugins"
