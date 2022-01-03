@@ -8,11 +8,11 @@ import struct
 import threading, functools
 import urllib.request, urllib.parse, urllib.error
 from typing import Callable, List, Generator, Iterable
-from volatility.plugins.windows import pslist
-from volatility.plugins.windows import info
-from volatility.plugins.windows import vadinfo
-from volatility.framework.configuration import requirements
-from volatility.framework import renderers, interfaces, objects, exceptions, symbols, constants
+from volatility3.plugins.windows import pslist
+from volatility3.plugins.windows import info
+from volatility3.plugins.windows import vadinfo
+from volatility3.framework.configuration import requirements
+from volatility3.framework import renderers, interfaces, objects, exceptions, symbols, constants
 import tkinter as tk
 from tkinter import N, E, W, S, END, YES, BOTH, PanedWindow, Tk, VERTICAL, LEFT, Menu, StringVar, RIGHT, SOLID
 import tkinter.messagebox as messagebox
@@ -4667,7 +4667,7 @@ class PhysicalRanges(tk.Frame):
 
     def __init__(self, parent, controller, data=None):
         global app
-        print('PhysicalRanges Start')
+        #print('PhysicalRanges Start')
         tk.Frame.__init__(self, parent)
         self.controller = controller
         label = tk.Label(self, text="Page Summary", font=controller.title_font)
@@ -4683,7 +4683,7 @@ class PhysicalRanges(tk.Frame):
         self.tree.tree['height'] = 22 if 22 < len(self.data) else len(self.data)
         self.tree.pack(expand=YES, fill=BOTH)
         self.tree.tree.bind("<Double-1>", self.OnDoubleClick)
-        print('PhysicalRanges Done')
+        #print('PhysicalRanges Done')
         #self.aMenu = Menu(self, tearoff=0)
         self.tree.aMenu.add_command(label='HexView', command=self.HexDump)
         self.tree.aMenu.add_command(label='Full Page Info', command=self.PageInfo)
@@ -6890,48 +6890,50 @@ class PtoV(common.AbstractWindowsCommand):
 
 class P2V(interfaces.plugins.PluginInterface):
     """ Fast ptov (using pfndb) """
-    _version = (1, 0, 0)
+    _required_framework_version = (2, 0, 0)
+    _version = (2, 0, 0)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+        self.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
         self._config = self.config
         self._config.ADDRESS = self._config.get("ADDRESS", None)
         if self._config.ADDRESS and self._config.ADDRESS.startswith("0x"):
             self._config.ADDRESS = int(self._config.ADDRESS, 16)
 
         self.kaddr_space = self.config['primary']
-        self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
+        self.kvo = self.context.layers[self.kaddr_space].config["kernel_virtual_offset"]
         self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
                                         layer_name=self.kaddr_space,
                                         offset=self.kvo)
 
 
         _pointer_struct = struct.Struct("<Q") if self.ntkrnlmp.get_type('pointer').size == 8 else struct.Struct('I')
-        self._pfndb = int(_pointer_struct.unpack(self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmPfnDatabase').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
+        self._pfndb = int(_pointer_struct.unpack(self.context.layers[self.kaddr_space].read(self.ntkrnlmp.get_symbol('MmPfnDatabase').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
         self.get_proc_pdbs()
 
         self.HighestUserAddress = int(_pointer_struct.unpack(
-            self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmHighestUserAddress').address + self.kvo,
+            self.context.layers[self.kaddr_space].read(self.ntkrnlmp.get_symbol('MmHighestUserAddress').address + self.kvo,
                                                 self.ntkrnlmp.get_type('pointer').size))[0])
 
         self.size_of_pte = self.ntkrnlmp.get_type("_MMPTE").size
         self.size_of_pfn = self.ntkrnlmp.get_type("_MMPFN").size
         self.map_process_vads_subsections()
 
-        self.bit_divisions = [12] + [tup[1] for tup in self.context.layers['primary'].structure]
-        self.table_names = ["Phys"] + [tup[0] for tup in self.context.layers['primary'].structure]
+        self.bit_divisions = [12] + [tup[1] for tup in self.context.layers[self.kaddr_space].structure]
+        self.table_names = ["Phys"] + [tup[0] for tup in self.context.layers[self.kaddr_space].structure]
 
     @classmethod
     def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
         # Since we're calling the plugin, make sure we have the plugin's requirements
-        return [requirements.TranslationLayerRequirement(name='primary',
-                                                         description='Memory layer for the kernel',
-                                                         architectures=["Intel32", "Intel64"]),
+        return [requirements.ModuleRequirement(name='kernel', description='Windows kernel',
+                                           architectures=["Intel32", "Intel64"]),
                 requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
                 requirements.StringRequirement(name='ADDRESS',
                                              description='Address to translate',
                                              optional=True),
-                requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(1, 0, 0)),
+                requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(2, 0, 0)),
                 ]
 
     def get_proc_pdbs(self):
@@ -7167,25 +7169,28 @@ class P2V(interfaces.plugins.PluginInterface):
 
 class PFNInfo(interfaces.plugins.PluginInterface):
     """ PFN related information """
-    _version = (1, 0, 0)
+    _required_framework_version = (2, 0, 0)
+    _version = (2, 0, 0)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+        self.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
         self.kaddr_space = self.config['primary']
         self._config = self.config
 
         self._config.ADDRESS = self._config.get("ADDRESS", None)
         self._config.INDEX = self._config.get("INDEX", None)
         self._config.PAGE = self._config.get("PAGE", None)
-        self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
+        self.kvo = self.context.layers[self.kaddr_space].config["kernel_virtual_offset"]
         self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
                                              layer_name=self.kaddr_space,
                                              offset=self.kvo)
 
         self.size_of_pfn = self.ntkrnlmp.get_type("_MMPFN").size
         _pointer_struct = struct.Struct("<Q") if self.ntkrnlmp.get_type('pointer').size == 8 else struct.Struct('I')
-        pfndb = int(_pointer_struct.unpack(self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmPfnDatabase').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
-        self.HighestUserAddress = int(_pointer_struct.unpack(self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('MmHighestUserAddress').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
+        pfndb = int(_pointer_struct.unpack(self.context.layers[self.kaddr_space].read(self.ntkrnlmp.get_symbol('MmPfnDatabase').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
+        self.HighestUserAddress = int(_pointer_struct.unpack(self.context.layers[self.kaddr_space].read(self.ntkrnlmp.get_symbol('MmHighestUserAddress').address + self.kvo, self.ntkrnlmp.get_type('pointer').size))[0])
         self.file_path = urllib.request.url2pathname(self.context.config['automagic.LayerStacker.single_location'][file_slice:])
         self.page_file_db = pfndb
         self.get_pool_ranges()
@@ -7211,9 +7216,8 @@ class PFNInfo(interfaces.plugins.PluginInterface):
     @classmethod
     def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
         # Since we're calling the plugin, make sure we have the plugin's requirements
-        return [requirements.TranslationLayerRequirement(name='primary',
-                                                         description='Memory layer for the kernel',
-                                                         architectures=["Intel32", "Intel64"]),
+        return [requirements.ModuleRequirement(name='kernel', description='Windows kernel',
+                                           architectures=["Intel32", "Intel64"]),
                 requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
                 requirements.StringRequirement(name='ADDRESS',
                                                description='Address of pfn',
@@ -7224,7 +7228,7 @@ class PFNInfo(interfaces.plugins.PluginInterface):
                 requirements.StringRequirement(name='PAGE',
                                                description='Page Physical Address',
                                                optional=True),
-                requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(1, 0, 0)),
+                requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(2, 0, 0)),
                 ]
 
     @classmethod
@@ -7511,10 +7515,13 @@ class PFNInfo(interfaces.plugins.PluginInterface):
 
 class RamMap(interfaces.plugins.PluginInterface):
     """Map Physical pages"""
-    _version = (1, 0, 0)
+    _required_framework_version = (2, 0, 0)
+    _version = (2, 0, 0)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+        self.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
         self._config = self.config
         self.file_path = urllib.request.url2pathname(self.context.config['automagic.LayerStacker.single_location'][file_slice:])
         self._config.COLORED = self._config.get("COLORED", None)
@@ -7537,11 +7544,11 @@ class RamMap(interfaces.plugins.PluginInterface):
             self._config.SIZE = int(self._config.SIZE)
 
         self.kaddr_space = self.config['primary']
-        self.kvo = self.context.layers['primary'].config["kernel_virtual_offset"]
+        self.kvo = self.context.layers[self.kaddr_space].config["kernel_virtual_offset"]
         self.ntkrnlmp = self._context.module(self.config['nt_symbols'],
                                         layer_name=self.kaddr_space,
                                         offset=self.kvo)
-        self.kdbg = info.Info.get_kdbg_structure(self.context, self.config_path, 'primary', self.config['nt_symbols'])
+        self.kdbg = info.Info.get_kdbg_structure(self.context, self.config_path, self.kaddr_space, self.config['nt_symbols'])
 
         self.get_pfn_info = PFNInfo(self.context.clone(), self.config_path)
         self.get_pfn_info_clone = PFNInfo(self.context.clone(), self.config_path)
@@ -7553,9 +7560,8 @@ class RamMap(interfaces.plugins.PluginInterface):
     @classmethod
     def get_requirements(cls) -> List[interfaces.configuration.RequirementInterface]:
         # Since we're calling the plugin, make sure we have the plugin's requirements
-        return [requirements.TranslationLayerRequirement(name='primary',
-                                                         description='Memory layer for the kernel',
-                                                         architectures=["Intel32", "Intel64"]),
+        return [requirements.ModuleRequirement(name='kernel', description='Windows kernel',
+                                           architectures=["Intel32", "Intel64"]),
                 requirements.SymbolTableRequirement(name="nt_symbols", description="Windows kernel symbols"),
                 requirements.StringRequirement(name='ADDRESS',
                                              description='Address to translate',
@@ -7567,7 +7573,7 @@ class RamMap(interfaces.plugins.PluginInterface):
                                                 description='Parse every directory under the root dir',
                                                 optional=True),
 
-                requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(1, 0, 0)),
+                requirements.PluginRequirement(name='pslist', plugin=pslist.PsList, version=(2, 0, 0)),
                 ]
 
     def file_exp_builder(self, c_dict, path_list, data):
