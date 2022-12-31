@@ -47,6 +47,7 @@ import volatility3.plugins.windows.modules as modules
 import volatility3.plugins.windows.vadinfo as vadinfo
 import volatility3.plugins.windows.dlllist as dlllist
 import volatility3.plugins.windows.getsids as getsids
+import volatility3.plugins.windows.handles as handlesplugin
 import volatility3.plugins.windows.registry.hivelist as hivelist
 from volatility3.framework.layers.registry import RegistryFormatException
 from volatility3.framework.symbols.windows.extensions.registry import RegValueTypes
@@ -1798,6 +1799,7 @@ files_scan = {}
 winobj_dict = {}
 reg_dict = {}
 service_dict = {}
+handle_x_view = {}
 all_plugins = ['path',[]]
 done_run = {'files_info': False, 'process_dlls': process_dlls, 'process_handles': False, 'process_bases': False, 'process_threads': process_threads, 'process_performance': process_performance,
             'process_connections': False, 'process_imports': False,'process_env_var': False, 'process_security': False, 'process_comments': process_comments, 'plugins_output': plugins_output,
@@ -11231,7 +11233,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         This function get all the process handles to the process_handles global.
         '''
 
-        import volatility3.plugins.windows.handles as handlesplugin
+        #import volatility3.plugins.windows.handles as handlesplugin
         global process_handles
         global done_run
         global lock
@@ -11826,7 +11828,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
             :param value: handle_value
             :return: DICT_ACCESS
             '''
-
+            #print(type, value)
             # File represent also pipes and ntfs directories
             if type == 'File':
 
@@ -11854,57 +11856,177 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         handles_gen = handles_plug._generator(tasks.PsList.list_processes(self.context, self.config['primary'], self.config['nt_symbols']))
         all_handles = handles_gen
 
+        stop_count = 0
+
         # Go all over the handels and insert them to the global process_handles.
-        try:
-            for (stup, (handle_pid, proc, offset, handle_value_number, handle_type, granted_access, handle_value)) in all_handles:
-                handle = self.ntkrnlmp.object("_HANDLE_TABLE_ENTRY",  offset=offset - self.kvo)
-                handle_pid = int(handle_pid) # memtriage realtime problem, so i want to create new integer and not a pointer to a reference.
+        #try:
+        for (stup, (handle_pid, proc, offset, handle_value_number, handle_type, granted_access, handle_value)) in all_handles:
+            stop_count += 1
 
-                # Create a list in the process_handles[pid] (if not exist)
-                if int(handle_pid) not in process_handles:
-                    process_handles[int(handle_pid)] = []
-                access = int(granted_access)
-                access_temp = int(access)
-                access_translate = ''
-                if handle_type == 'File':
-                    file_handle = handle.cast('_FILE_OBJECT')
-                    share_flags = file_handle.access_string()
+            handle = self.ntkrnlmp.object("_HANDLE_TABLE_ENTRY",  offset=offset - self.kvo)
+            handle_pid = int(handle_pid) # memtriage realtime problem, so i want to create new integer and not a pointer to a reference.
+
+            # Create a list in the process_handles[pid] (if not exist)
+            if int(handle_pid) not in process_handles:
+                process_handles[int(handle_pid)] = []
+            access = int(granted_access)
+            access_temp = int(access)
+            access_translate = ''
+            if handle_type == 'File':
+                file_handle = handle.cast('_FILE_OBJECT')
+                share_flags = file_handle.access_string()
+            else:
+                share_flags = ''
+
+            # Check specific access.
+            if handle_type in ACCESS_TYPE and type(handle_value) not in (renderers.UnreadableValue, renderers.NotApplicableValue, renderers.UnparsableValue, renderers.NotAvailableValue):
+                access_mask = check_special_types(handle_type, handle_value)
+
+                # Go over specific access right (a or between two or more regulare access)
+                for c_access in sorted(access_mask['SPECIFIC'], reverse=True):
+                    if access_temp & c_access and access_temp >= c_access:
+                        access_translate += '{}, '.format(access_mask['SPECIFIC'][c_access])
+                        access_temp -= c_access
+
+                        # If object all access than stop go all over the other rights.
+                        if 'ALL_ACCESS' in access_mask['SPECIFIC'][c_access]:
+                            break
                 else:
-                    share_flags = ''
 
-                # Check specific access.
-                if handle_type in ACCESS_TYPE:
-                    access_mask = check_special_types(handle_type, handle_value)
-
-                    # Go over specific access right (a or between two or more regulare access)
-                    for c_access in sorted(access_mask['SPECIFIC'], reverse=True):
+                    # Go over regular access right
+                    for c_access in access_mask['REGULAR']:
                         if access_temp & c_access and access_temp >= c_access:
-                            access_translate += '{}, '.format(access_mask['SPECIFIC'][c_access])
-                            access_temp -= c_access
+                            access_translate += '{}, '.format(access_mask['REGULAR'][c_access])
 
-                            # If object all access than stop go all over the other rights.
-                            if 'ALL_ACCESS' in access_mask['SPECIFIC'][c_access]:
-                                break
-                    else:
+                # Remove the ", " in the end of the string.
+                if len(access_translate) > 2:
+                    access_translate = access_translate[:-2]
 
-                        # Go over regular access right
-                        for c_access in access_mask['REGULAR']:
-                            if access_temp & c_access and access_temp >= c_access:
-                                access_translate += '{}, '.format(access_mask['REGULAR'][c_access])
-
-                    # Remove the ", " in the end of the string.
-                    if len(access_translate) > 2:
-                        access_translate = access_translate[:-2]
-
-                # Add the handle information to the dictionary
-                # Handle Information                      Type       | Value      | Share Flags| Handle            | Access| Access translate| Handle Virtual Offset  | Object Physical Address
-                process_handles[int(handle_pid)].append((str(handle_type), str(handle_value), share_flags, int(handle_value_number), access, access_translate, hex(handle.vol.offset), hex(handles_conf.layers[handle.vol.layer_name].translate(handle.vol.offset)[0])))# , physical
-            print('HANDLES DONE',len(process_handles))
-        except Exception as ex:
-            # Probably AttributeError,
-            print('[-] Failed to get handles ({})'.format(ex))
+            # Add the handle information to the dictionary
+            # Handle Information                      Type       | Value      | Share Flags| Handle            | Access| Access translate| Handle Virtual Offset  | Object Physical Address
+            process_handles[int(handle_pid)].append((str(handle_type), str(handle_value), share_flags, int(handle_value_number), access, access_translate, hex(handle.vol.offset), hex(handles_conf.layers[handle.vol.layer_name].translate(handle.vol.offset)[0])))# , physical
+        print('HANDLES DONE',len(process_handles))
+        #except Exception as ex:
+        #    # Probably AttributeError,
+        #    print('[-] Failed to get handles ({})'.format(ex))
         done_run['process_handles'] = process_handles
         job_queue.put_alert((id, 'Get Handles', 'the volexp search all handles information', 'Done'))
+
+    def handle_x_view(self):
+        global process_handles
+        global handle_x_view
+        while 'process_handles' not in done_run or not done_run['process_handles']:
+            time.sleep(10)
+        handle_list = process_handles
+        to_return = {}
+        simmilarities = {}
+        return_tree_view = {}
+        return_tree_view['all'] = []
+        return_tree_view['more_than_one'] = []
+        return_tree_view['percentage'] = []
+        tmp_precentage_list = {}
+        return_tree_view['by_pid'] = []
+        tmp_by_pid_list = {}
+
+        for pid in handle_list:
+            for handle_info in handle_list[pid]:
+                type = handle_info[0]
+                # if type not in out dict
+                if type not in to_return:
+                    to_return[type] = {}
+                if handle_info[-1] not in to_return[type]:
+                    to_return[type][handle_info[-1]] = []
+
+                to_return[type][handle_info[-1]].append(list(handle_info)[:-1] + [pid])
+
+        # Create the ['more_than_one'] list
+        for c_type in to_return:
+            return_tree_view['more_than_one'].append(("{} - {} objects".format(c_type, len(to_return[c_type])),
+                                     "-", "-", "-", "-", "-", "-", "-"))
+            for c_addr in to_return[c_type]:
+
+                if len(to_return[c_type][c_addr]) > 1:
+                    return_tree_view['more_than_one'].append(("?/?{}".format(c_type), c_addr, "-", "-", "-", "-", "-", "-", "-"))
+                    for all_data in to_return[c_type][c_addr]:
+                        return_tree_view['more_than_one'].append(("?/??/?{}".format(c_type), c_addr, all_data[1], all_data[2], all_data[3],
+                                                 all_data[4], all_data[5], all_data[6], all_data[7]))
+
+                        if all_data[7] not in tmp_by_pid_list:
+                            tmp_by_pid_list[all_data[7]] = {}
+                            tmp_precentage_list[all_data[7]] = {}
+
+                        if c_type not in tmp_by_pid_list[all_data[7]]:
+                            tmp_by_pid_list[all_data[7]][c_type] = {}
+
+                        if c_addr not in tmp_by_pid_list[all_data[7]][c_type]:
+                            tmplist = list(to_return[c_type][c_addr])
+                            tmplist.remove(all_data)
+                            tmp_by_pid_list[all_data[7]][c_type][c_addr] = tmplist
+
+                            for c_all_data in tmplist:
+                                if c_all_data[7] not in tmp_precentage_list[all_data[7]]:
+                                    tmp_precentage_list[all_data[7]][c_all_data[7]] = {}
+
+                                if c_type not in tmp_precentage_list[all_data[7]][c_all_data[7]]:
+                                    tmp_precentage_list[all_data[7]][c_all_data[7]][c_type] = []
+
+                                tmp_precentage_list[all_data[7]][c_all_data[7]][c_type].append(c_all_data + [c_addr])
+
+
+        #print(tmp_by_pid_list)
+        #print('---------------')
+        #print(tmp_precentage_list)
+                    
+                    
+        # Create the ['all'] list
+        for c_type in to_return:
+            return_tree_view['all'].append(("{} - {} objects".format(c_type, len(to_return[c_type])),
+                                     "-", "-", "-", "-", "-", "-", "-"))
+            for c_addr in to_return[c_type]:
+                return_tree_view['all'].append(("?/?{}".format(c_type), c_addr, "-", "-", "-", "-", "-", "-", "-"))
+                for all_data in to_return[c_type][c_addr]:
+                    return_tree_view['all'].append(("?/??/?{}".format(c_type), c_addr, all_data[1], all_data[2], all_data[3],
+                                             all_data[4], all_data[5], all_data[6], all_data[7]))
+
+
+        # Create the ['precentage'] list (tmp_precentage_list[pid][pid][c_type])
+        for c_pid in tmp_precentage_list:
+            return_tree_view['percentage'].append(("-", "-","-", "-", "-", "-", "-", "-", c_pid))
+
+            # Skip the same process
+            #if c_pid == in_pid:
+            #    continue
+
+            for in_pid in tmp_precentage_list[c_pid]:
+                return_tree_view['percentage'].append(("?/?{}".format("-"), "-", "-", "-", "-", "-", "-", "-", in_pid))
+                index = len(return_tree_view['percentage']) - 1
+                for c_type in tmp_precentage_list[c_pid][in_pid]:
+                    for all_data in tmp_precentage_list[c_pid][in_pid][c_type]:
+                        return_tree_view['percentage'].append(("?/??/?{}".format(c_type), all_data[-1], all_data[1], all_data[2], all_data[3],
+                                                 all_data[4], all_data[5], all_data[6], all_data[7]))
+
+                m_list = list(return_tree_view['percentage'][index])
+                # get all the handles[pid] and / handle len, that add it to the format
+                handlelen = len(return_tree_view['percentage']) - (index + 1)
+                handles_precentage = (handlelen / len(process_handles[c_pid])) * 100
+                return_tree_view['percentage'][index] = tuple(m_list[:-1] + ["{} ({})".format(m_list[-1], handles_precentage)])
+
+        # Create the ['precentage'] list (tmp_precentage_list[pid][c_type][addr])
+        for c_pid in tmp_by_pid_list:
+            return_tree_view['by_pid'].append(("-", "-", "-", "-", "-", "-", "-", "-", c_pid))
+            for c_type in tmp_by_pid_list[c_pid]:
+                return_tree_view['by_pid'].append(("?/?{}".format(c_type), "-", "-", "-", "-", "-", "-", "-", c_pid))
+                for c_addr in tmp_by_pid_list[c_pid][c_type]:
+                    for all_data in tmp_by_pid_list[c_pid][c_type][c_addr]:
+                        return_tree_view['by_pid'].append(
+                            ("?/??/?{}".format(c_type), c_addr, all_data[1], all_data[2], all_data[3],
+                    all_data[4], all_data[5], all_data[6], all_data[7]))
+                    
+                    
+        handle_x_view = return_tree_view
+        done_run['handle_x_view'] = handle_x_view
+        print("process_x_view_done")
+        #return to_return, return_tree_view
 
     def get_all_plugins(self):
         global all_plugins
@@ -12321,8 +12443,9 @@ class Vol3xp(interfaces.plugins.PluginInterface):
                 if isinstance(c_pid, int) and c_pid != -1:
                     queue.put((self.treetable.SetColorItem, ('light pink', None, c_pid)))
                     #if not process_comments['pidColor'].has_key(c_pid) and process_comments.has_key(c_pid):
-                    process_comments[c_pid] += "(Colored in pink because this is a service)."
-                    process_comments['pidColor'][c_pid] = 'light pink'
+                    if c_pid != 0:
+                        process_comments[c_pid] += "(Colored in pink because this is a service)."
+                        process_comments['pidColor'][c_pid] = 'light pink'
 
             # svcscan return the same service more than once.
             if not (offset, order, start, c_pid, name, display, c_type, state, binary) in service_dict[c_pid]:
@@ -12892,6 +13015,62 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         else:
             frame = Explorer(self.NoteBook, my_dict=mft_explorer ,headers=("File Name", "Creation", "Modified", "MFT alerted", "Access", "Use", "Type", "Link count", "Record number", "Offset"), searchTitle='Search Form MFT Records', relate=root)
             self.NoteBook.add(frame, text="MFT Files Explorer")
+
+    def control_q(self, event):
+        '''
+        This function popup Mft Files explorer screen.
+        :param event: event
+        :return: None
+        '''
+
+        # Show message and return if we don't Gather this information.
+        if handle_x_view == {}:
+            messagebox.showwarning('Notice', 'Still searching for the information\nPlease try again later.')
+        else:
+            """
+            return_tree_view['all'] = []
+            return_tree_view['more_than_one'] = []
+            return_tree_view['percentage'] = []
+            return_tree_view['by_pid'] = {}
+            """
+            app = tk.Toplevel()
+            x = root.winfo_x()
+            y = root.winfo_y()
+            app.geometry("+%d+%d" % (x + ABS_X, y + ABS_Y))
+            TreeTable(app, headers=(
+                "type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off",
+                "pid"), data=handle_x_view['more_than_one'],
+                     display=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate",
+                              "virt_off", "pid"), folder_by_item=0, folder_text="?/?").pack(fill=BOTH, expand=YES)
+
+
+            app.title("Handle X View")
+
+    def s_control_q(self, event):
+        '''
+        This function add Mft Files explorer as tab.
+        :param event: event
+        :return: None
+        '''
+
+        # Show message and return if we don't Gather this information.
+        if handle_x_view == {}:
+            messagebox.showwarning('Notice', 'Still searching for the information\nPlease try again later.')
+        else:
+            frame =  TreeTable(self.NoteBook, headers=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid"), data=handle_x_view['all'], display=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid"), folder_by_item=0, folder_text="?/?")
+            self.NoteBook.add(frame, text="Handle X View (All)")
+
+
+            frame = TreeTable(self.NoteBook, headers=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid"), data=handle_x_view['more_than_one'], display=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid"), folder_by_item=0, folder_text="?/?")
+            self.NoteBook.add(frame, text="Handle X View (Shared)")
+
+
+            frame = TreeTable(self.NoteBook, headers=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid"), data=handle_x_view['by_pid'], display=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid"), folder_by_item=0, folder_text="?/?")
+            self.NoteBook.add(frame, text="Handle X View(By pid)")
+
+
+            frame = TreeTable(self.NoteBook, headers=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid"), data=handle_x_view['percentage'], display=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid"), folder_by_item=0, folder_text="?/?")
+            self.NoteBook.add(frame, text="Handle X View (percentage)")
 
     def control_w(self, event):
         '''
@@ -14156,6 +14335,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         subview_menu_bar.add_command(label="MFT Explorer", command=lambda: self.s_control_m(0))
         subview_menu_bar.add_command(label="File Explorer", command=lambda: self.s_control_e(0))
         subview_menu_bar.add_command(label="WinObj Explorer", command=lambda: self.s_control_w(0))
+        subview_menu_bar.add_command(label="Handle X View", command=lambda: self.s_control_q(0))
         subview_menu_bar.add_separator()
         subview_menu_bar.add_command(label="Process", command=lambda: self.s_control_t(0))
         subview_menu_bar.add_command(label="Modules", command=lambda: self.s_control_d(0))
@@ -14175,6 +14355,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         view_menu_bar.add_command(label="WinObj Explorer (Ctrl+w)", command=lambda: self.control_w(0))
         view_menu_bar.add_command(label="Process Tree (Ctrl+t)", command=lambda: self.control_t(0))
         view_menu_bar.add_command(label="Services (Ctrl+s)", command=lambda: self.control_s(0))
+        view_menu_bar.add_command(label="Handle X View (Ctrl+q)", command=lambda: self.control_q(0))
         # view_menu_bar.add_command(label="System Information (Ctrl+i)", command=lambda: self.control_i(0)) # To Add
         # view_menu_bar.entryconfig(8, background='red')
         view_menu_bar.add_separator()
@@ -14516,7 +14697,21 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         if len(process_handles) == 0 and 'process_handles' in done_run:
             t10 = threading.Thread(target=self.get_all_handles, name='handles')
             t10.daemon = True
+            #t10.start()
             self.threads.append(t10)
+
+        # Check if not chached
+        if len(handle_x_view) == 0:
+
+            # Colored the filesscan menu.
+            view_menu_bar.entryconfig(7, background='red')
+            subview_menu_bar.entryconfig(10, background='red')
+
+            # Start the thread that call the filescangui plugin to scan the memory for files
+            t8 = threading.Thread(target=self.handle_x_view, name='handle_x_view')
+            t8.daemon = True
+            #t8.start()
+            self.threads.append(t6)
 
         # Starting all the threads
         for c_t in self.threads:
@@ -14549,6 +14744,8 @@ class Vol3xp(interfaces.plugins.PluginInterface):
         root.bind('<Control-w>', self.control_w)
         root.bind('<Control-o>', self.popup_options)
         root.bind('<Control-O>', self.popup_options)
+        root.bind('<Control-q>', self.control_q)
+        root.bind('<Control-Q>', self.control_q)
         root.bind('<Control-a>', self.view_comments)
         root.bind('<Control-A>', self.view_comments)
         root.bind('<F11>', self.control_h)
@@ -14603,6 +14800,164 @@ class Vol3xp(interfaces.plugins.PluginInterface):
 
     def run(self):
         self.render_ui(self._generator())
+
+class HandleXViewGui(interfaces.plugins.PluginInterface):
+    """Memory Explorer (GUI plugin)"""
+    _required_framework_version = (2, 0, 0)
+    _version = (2, 0, 0)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._config = self.config
+        self.config['primary'] = self.context.modules[self.config['kernel']].layer_name
+        self.config['nt_symbols'] = self.context.modules[self.config['kernel']].symbol_table_name
+        self.kvo = self.context.layers[self.config['primary']].config["kernel_virtual_offset"]
+        self.ntkrnlmp = self.context.module(self.config['nt_symbols'], layer_name=self.config['primary'], offset=self.kvo)
+
+    @classmethod
+    def get_requirements(cls):
+        return [
+            requirements.ModuleRequirement(name='kernel', description='Windows kernel',
+                                           architectures=["Intel32", "Intel64"]),
+            requirements.VersionRequirement(
+                name="handlesplugin", component=handlesplugin, version=(1, 0, 0)
+            ),
+            requirements.SymbolTableRequirement(name = "nt_symbols", description = "Windows kernel symbols"),
+            requirements.StringRequirement(name='GET_DICT',
+                                           description='Path To Dump Info',
+                                           default=None,
+                                           optional=True), ]
+
+    def build_handles_table(self, handle_list):
+        """
+        #process_handles[int(handle_pid)].append((str(handle_type), str(handle_value), share_flags,
+        #                                         int(handle_value_number), access, access_translate,
+        #                                         hex(handle.vol.offset), hex(
+        #    handles_conf.layers[handle.vol.layer_name].translate(handle.vol.offset)[0])))
+        #list[pid].append(type, value, share_flag, handle_num, access, access_translate, virt_off, phys_offst
+        """
+        global process_handles
+        self.to_return = {}
+        self.return_tree_view = []
+
+        for pid in handle_list:
+            for handle_info in handle_list[pid]:
+                type = handle_info[1]
+                # if type not in out dict
+                if type not in to_return:
+                    to_return[type] = {}
+                    to_return[type][handle_info[-1]] = []
+
+                to_return[type][handle_info[-1]].append(list(handle_info)+ [pid])
+
+        for c_type in to_return:
+            return_tree_view.append(("{} - {} objects".format(c_type, len(to_return(c_type))),
+                                     "-", "-", "-", "-", "-", "-", "-"))
+            for c_addr in to_return[c_type]:
+                return_tree_view.append(("?/?{}".format(c_type), c_addr, "-", "-", "-", "-", "-", "-", "-"))
+                for all_data in to_return[c_type][c_addr]:
+                    return_tree_view.append(("?/??/?{}".format(c_type), c_addr, all_data[1], all_data[2], all_data[3],
+                                             all_data[4], all_data[5], all_data[6], all_data[7]))
+
+        return to_return, return_tree_view
+
+
+    def _generator(self, handle_list=None):
+        '''
+        Calculate methond, use filescan, shimecachemem, userassis, shimcache, amcache.
+        :return:
+        '''
+        global files_scan
+        if not handle_list:
+            handle_list = self.build_handles_table()
+        self.build_handles(files)
+
+        return
+
+    def render_ui(self, data):
+        global volself
+        global root
+        global queue
+
+        if self._config.GET_DICT == 'no' or not self._config.GET_DICT or self._config.GET_DICT == 'None':
+            print("GL & HF <3")
+            job_queue.put_alert = job_queue.put
+            app = Tk()
+            volself = self
+            self.style = s = ThemedStyle(app) if has_themes else tkinter.ttk.Style()
+            s.layout("Tab", [('Notebook.tab', {'sticky': 'nswe', 'children':
+                [('Notebook.padding', {'side': 'top', 'sticky': 'nswe', 'children':
+                    [('Notebook.label', {'side': 'top', 'sticky': ''})],
+                                       })],
+                                               })])
+            s.configure('Treeview', rowheight=21)
+
+            def fixed_map(option):
+                # Returns the style map for 'option' with any styles starting with
+                # ("!disabled", "!selected", ...) filtered out
+
+                # style.map() returns an empty list for missing options, so this should
+                # be future-safe
+                return [elm for elm in s.map("Treeview", query_opt=option)
+                        if elm[:2] != ("!disabled", "!selected")]
+
+            s.map("Treeview",
+                  foreground=fixed_map("foreground"),
+                  background=fixed_map("background"))
+            volself.search_exp_image = tk.PhotoImage(data=EXP_SEARCH_ICON)
+            volself.search_exp_image_icon = volself.search_exp_image.subsample(8, 8)
+            self.img = tk.PhotoImage(data=ICON)
+            app.iconphoto(True, self.img)
+            TreeTree(self, headers=(
+            "type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid"), data=self.return_tree_view,
+                                           display=("type", "phys_offst", "value", "share_flag", "handle_num", "access", "access_translate", "virt_off", "pid")).pack(fill=BOTH, expand=YES)
+            #FileExplorer(app, dict=files_scan, headers=("File Name", "Access", "Type", "Pointer Count", "Handle Count", "Offset"), searchTitle='Search For Handles', relate=app).pack(fill=BOTH, expand=YES)
+            app.geometry("1400x650")
+            app.title("handle Explorer")
+            root = app
+
+            # Exit Popup
+            def on_exit(none=None):
+                '''
+                Exit popup
+                :param none: None (support event)
+                :return: None
+                '''
+                if messagebox.askokcancel("Quit",
+                                          "Do you really wish to quit?"):
+                    self._run_main_loop = False
+
+            root.protocol("WM_DELETE_WINDOW", on_exit)
+
+            self._run_main_loop = True
+
+            # mainloop
+            while self._run_main_loop:
+                root.update()
+                root.update_idletasks()
+
+                # If there is function in the Queue then run it.
+                if queue.empty():
+                    time.sleep(0.1)
+                else:
+                    func, args = queue.get()
+                    if len(args) > 0:
+
+                        # Get kwargs also in the args (if the last args is tuple ('**kwargs', dict)
+                        if type(args[-1]) is tuple and args[-1][0] == '**kwargs':
+
+                            # Check if there is also *args or only **kwargs
+                            if len(args) > 1:
+                                func(*args[:-1], **args[-1][1])
+                            else:
+                                func(**args[-1][1])
+                        else:
+                            func(*args)
+                    else:
+                        func()
+    def run(self):
+        self.render_ui(self._generator())
+
 
 class StructAnalyzer(interfaces.plugins.PluginInterface):
     '''Analyze an object (Gui).'''
@@ -14854,6 +15209,7 @@ class StructAnalyzer(interfaces.plugins.PluginInterface):
 
     def run(self):
         self.render_user_interface(self._generator())
+
 
 class WinObjGui(interfaces.plugins.PluginInterface):
     '''WinObj (Explorer GUI plugin)'''
