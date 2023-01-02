@@ -44,7 +44,10 @@ class WinObj(interfaces.plugins.PluginInterface):
 		# Get the cookie (or none if this version dont use cookie).
 		try:
 			offset = self.context.symbol_space.get_symbol(self.config["nt_symbols"] + constants.BANG + "ObHeaderCookie").address
-			kvo = self.context.layers[self.config["primary"]].config['kernel_virtual_offset']
+			kernel = self.context.modules[self.config["kernel"]]        
+			physical_layer_name = self.context.layers[kernel.layer_name]
+			kvo = self.context.layers[kernel.layer_name].config['kernel_virtual_offset']
+
 			self.cookie = self.context.object(self.config["nt_symbols"] + constants.BANG + "unsigned int" , self.config["primary"], offset=kvo + offset)
 		except exceptions.SymbolError:
 			self.cookie = None
@@ -108,8 +111,9 @@ class WinObj(interfaces.plugins.PluginInterface):
 		try:
 			import struct
 			_pointer_struct = struct.Struct("<Q") if self.ntkrnlmp.get_type('pointer').size == 8 else struct.Struct('I')
+			kernel = self.context.modules[self.config["kernel"]]        
 			root_dir_addr = int(_pointer_struct.unpack(
-				self.context.layers['primary'].read(self.ntkrnlmp.get_symbol('ObpRootDirectoryObject').address + self.ntkrnlmp.offset, self.ntkrnlmp.get_type('pointer').size))[0])
+				self.context.layers[kernel.layer_name].read(self.ntkrnlmp.get_symbol('ObpRootDirectoryObject').address + self.ntkrnlmp.offset, self.ntkrnlmp.get_type('pointer').size))[0])
 		except:
 			root_dir_addr = info.Info.get_kdbg_structure(self.context, self.config_path, self.config['primary'], self.config['nt_symbols']).ObpRootDirectoryObject
 			root_dir_addr = self.ntkrnlmp.object("pointer", offset=root_dir_addr - self.ntkrnlmp.offset)
