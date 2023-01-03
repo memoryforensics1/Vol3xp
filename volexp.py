@@ -14711,7 +14711,7 @@ class Vol3xp(interfaces.plugins.PluginInterface):
             t8 = threading.Thread(target=self.handle_x_view, name='handle_x_view')
             t8.daemon = True
             #t8.start()
-            self.threads.append(t6)
+            self.threads.append(t8)
 
         # Starting all the threads
         for c_t in self.threads:
